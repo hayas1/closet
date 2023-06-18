@@ -1,15 +1,13 @@
-use api::address;
+use api::{address, api_route};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let subscriber = tracing_subscriber::FmtSubscriber::new();
     tracing::subscriber::set_global_default(subscriber)?;
 
-    let route = axum::Router::new().route("/", axum::routing::get(|| async { "ok" }));
-
-    let bind = &address().await;
+    let (route, bind) = (api_route(), address().await);
     let app = axum::Server::bind(&bind.parse()?)
-        .serve(route.into_make_service())
+        .serve(route.await.into_make_service())
         .with_graceful_shutdown(async {
             tokio::signal::ctrl_c()
                 .await

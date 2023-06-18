@@ -1,3 +1,7 @@
+pub async fn api_route() -> axum::Router {
+    axum::Router::new().route("/", axum::routing::get(|| async { "ok" }))
+}
+
 pub static LISTEN_DOMAIN: tokio::sync::OnceCell<String> = tokio::sync::OnceCell::const_new();
 pub async fn address() -> &'static str {
     LISTEN_DOMAIN
