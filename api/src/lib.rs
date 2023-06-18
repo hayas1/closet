@@ -14,8 +14,9 @@ pub fn api_router() -> axum::Router {
         .nest("/health", handle::health::health_router())
 }
 
-pub static _ADDRESS: tokio::sync::OnceCell<String> = tokio::sync::OnceCell::const_new();
-pub async fn address() -> &'static str {
+pub static _ADDRESS: tokio::sync::OnceCell<std::net::SocketAddr> =
+    tokio::sync::OnceCell::const_new();
+pub async fn address() -> &'static std::net::SocketAddr {
     _ADDRESS
         .get_or_init(|| async {
             let (ip, port) = (
@@ -23,6 +24,8 @@ pub async fn address() -> &'static str {
                 std::env::var(PORT.0).unwrap_or_else(|_| PORT.1.into()),
             );
             format!("{}:{}", ip, port)
+                .parse()
+                .unwrap_or_else(|e| panic!("{}", e))
         })
         .await
 }
