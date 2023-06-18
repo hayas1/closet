@@ -1,4 +1,5 @@
-use axum::{response::IntoResponse, Router};
+use axum::Router;
+use serde::Serialize;
 
 use crate::response::{result::ApiResponse, ApiResult};
 
@@ -7,6 +8,6 @@ pub fn health_router() -> Router {
 }
 
 #[tracing::instrument(level = "info")]
-pub async fn health() -> ApiResult<impl IntoResponse> {
+pub async fn health() -> ApiResult<impl Serialize> {
     Ok(ApiResponse::new("ok"))
 }
