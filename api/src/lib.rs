@@ -1,5 +1,6 @@
 pub mod dev_debug;
 pub mod handle;
+pub mod logging;
 pub mod response;
 
 pub const HOST: (&str, &str) = ("HOST", "0.0.0.0");
@@ -22,6 +23,7 @@ pub async fn api_router() -> axum::Router {
                 ))
                 .timeout(out_time().await.clone()),
         )
+        .layer(axum::middleware::from_fn(logging::middleware::request_log))
 }
 
 pub static _ADDRESS: tokio::sync::OnceCell<std::net::SocketAddr> =

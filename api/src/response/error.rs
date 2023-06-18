@@ -38,7 +38,6 @@ impl IntoResponse for ApiError {
 }
 
 impl ApiError {
-    #[tracing::instrument(level = "info")]
     pub async fn handle(error: BoxError) -> (StatusCode, impl IntoResponse) {
         if error.is::<tower::timeout::error::Elapsed>() {
             (
