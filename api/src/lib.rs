@@ -16,10 +16,14 @@ pub async fn api_router() -> axum::Router {
         .route("/", axum::routing::get(handle::health::health))
         .nest("/dev/debug", dev_debug::dev_debug_router())
         .nest("/health", handle::health::health_router())
+        .route(
+            "/*404",
+            axum::routing::get(response::error::ApiError::handle_not_found),
+        )
         .layer(
             tower::ServiceBuilder::new()
                 .layer(axum::error_handling::HandleErrorLayer::new(
-                    response::error::ApiError::handle,
+                    response::error::ApiError::handle_timeout,
                 ))
                 .timeout(out_time().await.clone()),
         )
