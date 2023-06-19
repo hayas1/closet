@@ -11,6 +11,9 @@ impl<T> ApiResponse<T> {
     pub fn new(result: T) -> Self {
         Self { result }
     }
+    pub fn result(&self) -> &T {
+        &self.result
+    }
 }
 impl<T: Serialize> IntoResponse for ApiResponse<T> {
     fn into_response(self) -> axum::response::Response {
