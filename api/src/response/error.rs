@@ -3,7 +3,7 @@ use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::out_time;
+use crate::Configuration;
 
 #[derive(Debug, thiserror::Error, Serialize, Deserialize)]
 pub enum ApiError {
@@ -27,7 +27,7 @@ impl ApiError {
     }
     pub async fn handle_timeout(error: BoxError) -> impl IntoResponse {
         if error.is::<tower::timeout::error::Elapsed>() {
-            ApiError::TimeoutError(*out_time())
+            ApiError::TimeoutError(*Configuration::out_time())
         } else {
             let err = anyhow::anyhow!("Unhandled internal error: {}", error);
             err.into()
