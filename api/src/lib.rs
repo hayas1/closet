@@ -62,3 +62,28 @@ impl Configuration {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use hyper::{body::to_bytes, Body, Request, StatusCode};
+    use tower::Service;
+
+    use crate::response::result::ApiResponse;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_health_call() {
+        let (uri, body) = ("/health", Body::empty());
+        let mut api = api_router().into_make_service();
+        let request = Request::builder().uri(uri).body(body).unwrap();
+        let mut router = api.call(&request).await.unwrap();
+        let response = router.call(request).await.unwrap(); // request twice ?
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = to_bytes(response.into_body()).await.unwrap();
+        assert_eq!(&bytes[..], b"{\"result\":\"ok\"}");
+        let health: ApiResponse<&str> = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(health, ApiResponse::new("ok"));
+    }
+}
