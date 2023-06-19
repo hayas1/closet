@@ -27,7 +27,7 @@ impl ApiError {
     }
     pub async fn handle_timeout(error: BoxError) -> impl IntoResponse {
         if error.is::<tower::timeout::error::Elapsed>() {
-            ApiError::TimeoutError(*out_time().await)
+            ApiError::TimeoutError(*out_time())
         } else {
             let err = anyhow::anyhow!("Unhandled internal error: {}", error);
             err.into()

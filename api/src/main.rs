@@ -5,7 +5,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let subscriber = tracing_subscriber::FmtSubscriber::new();
     tracing::subscriber::set_global_default(subscriber)?;
 
-    let (route, bind) = (router().await, address().await);
+    let (route, bind) = (router(), address());
     let app = axum::Server::bind(&bind)
         .serve(route.into_make_service())
         .with_graceful_shutdown(async {
