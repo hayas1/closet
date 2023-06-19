@@ -7,49 +7,43 @@ use crate::out_time;
 
 #[derive(Debug, thiserror::Error, Serialize, Deserialize)]
 pub enum ApiError {
-    #[error("{0}")]
+    #[error("{1}")]
     #[serde(with = "super::anyhow")]
-    AnyhowError(anyhow::Error),
+    AnyhowError(StatusCode, anyhow::Error),
 
     #[error("request timeout {:?}", .0)]
     TimeoutError(std::time::Duration),
 }
-
-impl From<anyhow::Error> for ApiError {
-    fn from(inner: anyhow::Error) -> Self {
-        Self::AnyhowError(inner)
-    }
-}
-
-impl IntoResponse for ApiError {
-    fn into_response(self) -> axum::response::Response {
-        let (status_code, response) = match self {
-            Self::TimeoutError(t) => (
-                StatusCode::REQUEST_TIMEOUT,
-                json!({ "msg": format!("{}", self) , "timeout": t.as_millis()}),
-            ),
-            _ => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json!({ "msg": format!("{}", self) }),
-            ),
-        };
-        (status_code, Json(json!({ "error": response }))).into_response()
-    }
-}
-
 impl ApiError {
-    pub async fn handle(error: BoxError) -> (StatusCode, impl IntoResponse) {
+    pub fn status_code(&self) -> &StatusCode {
+        match self {
+            Self::AnyhowError(code, _) => &code,
+            Self::TimeoutError(_) => &StatusCode::REQUEST_TIMEOUT,
+        }
+    }
+    pub async fn handle(error: BoxError) -> impl IntoResponse {
         if error.is::<tower::timeout::error::Elapsed>() {
-            (
-                StatusCode::REQUEST_TIMEOUT,
-                ApiError::TimeoutError(*out_time().await),
-            )
+            ApiError::TimeoutError(*out_time().await)
         } else {
             let err = anyhow::anyhow!("Unhandled internal error: {}", error);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                ApiError::AnyhowError(err),
-            )
+            err.into()
         }
+    }
+}
+impl IntoResponse for ApiError {
+    fn into_response(self) -> axum::response::Response {
+        let error = json!({"msg": format!("{}", self), "serde": self});
+        (self.status_code().clone(), Json(json!({ "error": error }))).into_response()
+    }
+}
+
+impl From<anyhow::Error> for ApiError {
+    fn from(error: anyhow::Error) -> Self {
+        Self::AnyhowError(StatusCode::INTERNAL_SERVER_ERROR, error)
+    }
+}
+impl From<(StatusCode, anyhow::Error)> for ApiError {
+    fn from((status, error): (StatusCode, anyhow::Error)) -> Self {
+        Self::AnyhowError(status, error)
     }
 }
