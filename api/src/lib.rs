@@ -82,7 +82,7 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = to_bytes(response.into_body()).await.unwrap();
-        assert_eq!(&bytes[..], b"{\"result\":\"ok\"}");
+        assert_eq!(&bytes[..], br#"{"result":"ok"}"#);
         let health: ApiResponse<&str> = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(health, ApiResponse::new("ok"));
     }
