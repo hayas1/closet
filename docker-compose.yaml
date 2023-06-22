@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    ports:
+      - 3306:3306
+    environment:
+      TZ: Asia/Tokyo
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: closet
+      MYSQL_PASSWORD: closet
+      MYSQL_DATABASE: db
+    volumes:
+      - mysql_store:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      PMA_ARBITRARY: 1
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: root
+    links:
+      - db
+    ports:
+      - 3307:80
+    volumes:
+      - pma_sessions:/sessions
+
+  migrate:
+    image: rust:latest
+    depends_on:
+      - db
+    command: [ "cargo", "run", "--bin", "migration", "--", "up" ]
+    environment:
+      DATABASE_URL: mysql://closet:closet@db:3306/db
+      CARGO_TARGET_DIR: /mnt/target
+    working_dir: /app
+    volumes:
+      - cargo_target:/mnt/target
+      - .:/app:readonly
+
+volumes:
+  mysql_store:
+    driver: local
+  cargo_target:
+    driver: local
+  pma_sessions:
+    driver: local
