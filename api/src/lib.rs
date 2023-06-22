@@ -24,6 +24,16 @@ pub fn api_router() -> axum::Router {
         )
         .layer(axum::middleware::from_fn(logging::middleware::request_log))
 }
+#[derive(Clone)]
+pub struct AppState {
+    pub db: sea_orm::DatabaseConnection,
+}
+pub async fn with_database_connection(
+    router: axum::Router<AppState>,
+) -> Result<axum::Router<AppState>, sea_orm::DbErr> {
+    let db = sea_orm::Database::connect(Configuration::database_uri());
+    Ok(router.with_state(AppState { db: db.await? }))
+}
 
 pub struct Configuration {}
 impl Configuration {
@@ -31,6 +41,12 @@ impl Configuration {
     pub const PORT: (&str, &str) = ("PORT", "3000");
     pub const BASE_URL: (&str, &str) = ("BASE_URL", "/");
     pub const TIMEOUT: (&str, &str) = ("TIMEOUT", "1000ms");
+    pub const DATABASE_URL: &str = "DATABASE_URL"; // sea_orm require env DATABASE_URL
+    pub const MYSQL_HOST: (&str, &str) = ("MYSQL_HOST", "127.0.0.1");
+    pub const MYSQL_USER: &str = "MYSQL_USER";
+    pub const MYSQL_PASSWORD: &str = "MYSQL_PASSWORD";
+    pub const MYSQL_PORT: (&str, &str) = ("MYSQL_PORT", "3306");
+    pub const MYSQL_DB: (&str, &str) = ("MYSQL_DB", "db");
 
     pub fn address() -> &'static std::net::SocketAddr {
         static _ADDRESS: std::sync::OnceLock<std::net::SocketAddr> = std::sync::OnceLock::new();
@@ -48,9 +64,7 @@ impl Configuration {
     pub fn base_url() -> &'static str {
         static _BASE_URL: std::sync::OnceLock<String> = std::sync::OnceLock::new();
         _BASE_URL.get_or_init(|| {
-            std::env::var(Self::BASE_URL.0)
-                .unwrap_or_else(|_| Self::BASE_URL.1.into())
-                .clone()
+            std::env::var(Self::BASE_URL.0).unwrap_or_else(|_| Self::BASE_URL.1.into())
         })
     }
 
@@ -59,6 +73,21 @@ impl Configuration {
         _TIMEOUT.get_or_init(|| {
             let ts = std::env::var(Self::TIMEOUT.0).unwrap_or_else(|_| Self::TIMEOUT.1.into());
             duration_str::parse(&ts).unwrap_or_else(|e| panic!("{:?}", e))
+        })
+    }
+
+    pub fn database_uri() -> &'static str {
+        static _DATABASE_URI: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+        _DATABASE_URI.get_or_init(|| match std::env::var(Self::DATABASE_URL) {
+            Ok(uri) => uri,
+            Err(_) => format!(
+                "mysql://{}:{}@{}:{}/{}",
+                std::env::var(Self::MYSQL_USER).unwrap(),
+                std::env::var(Self::MYSQL_PASSWORD).unwrap(),
+                std::env::var(Self::MYSQL_HOST.0).unwrap_or_else(|_| Self::MYSQL_HOST.1.into()),
+                std::env::var(Self::MYSQL_PORT.0).unwrap_or_else(|_| Self::MYSQL_PORT.1.into()),
+                std::env::var(Self::MYSQL_DB.0).unwrap_or_else(|_| Self::MYSQL_DB.1.into()),
+            ),
         })
     }
 }
