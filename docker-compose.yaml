@@ -38,13 +38,27 @@ services:
       CARGO_TARGET_DIR: /mnt/target
     working_dir: /app
     volumes:
-      - cargo_target:/mnt/target
+      - migrate_cargo_target:/mnt/target
+      - .:/app:readonly
+
+  api:
+    image: rust:latest
+    ports:
+      - 3000:3000
+    depends_on:
+      - db
+      - migrate
+    command: [ "cargo", "run", "--bin", "api" ]
+    environment:
+      DATABASE_URL: mysql://closet:closet@db:3306/db
+      CARGO_TARGET_DIR: /mnt/target
+    working_dir: /app
+    volumes:
+      - api_cargo_target:/mnt/target
       - .:/app:readonly
 
 volumes:
   mysql_store:
-    driver: local
-  cargo_target:
-    driver: local
   pma_sessions:
-    driver: local
+  migrate_cargo_target:
+  api_cargo_target:
