@@ -3,9 +3,12 @@ use hyper::StatusCode;
 use serde::Serialize;
 use serde_json::json;
 
-use crate::response::{result::ApiResponse, ApiResult};
+use crate::{
+    response::{result::ApiResponse, ApiResult},
+    AppState,
+};
 
-pub fn dev_debug_router() -> Router {
+pub fn dev_debug_router() -> Router<AppState> {
     axum::Router::new().route("/wait/:time", axum::routing::get(wait))
 }
 

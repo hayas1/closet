@@ -1,8 +1,11 @@
 use axum::Router;
 
-use crate::response::{result::ApiResponse, ApiResult};
+use crate::{
+    response::{result::ApiResponse, ApiResult},
+    AppState,
+};
 
-pub fn health_router() -> Router {
+pub fn health_router() -> Router<AppState> {
     axum::Router::new().route("/", axum::routing::get(health))
 }
 

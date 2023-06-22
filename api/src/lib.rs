@@ -3,10 +3,10 @@ pub mod handle;
 pub mod logging;
 pub mod response;
 
-pub fn router() -> axum::Router {
+pub fn router() -> axum::Router<AppState> {
     axum::Router::new().nest(Configuration::base_url(), api_router())
 }
-pub fn api_router() -> axum::Router {
+pub fn api_router() -> axum::Router<AppState> {
     axum::Router::new()
         .route("/", axum::routing::get(handle::health::health))
         .nest("/dev/debug", dev_debug::dev_debug_router())
@@ -30,7 +30,7 @@ pub struct AppState {
 }
 pub async fn with_database_connection(
     router: axum::Router<AppState>,
-) -> Result<axum::Router<AppState>, sea_orm::DbErr> {
+) -> Result<axum::Router, sea_orm::DbErr> {
     let db = sea_orm::Database::connect(Configuration::database_uri());
     Ok(router.with_state(AppState { db: db.await? }))
 }
@@ -82,8 +82,18 @@ impl Configuration {
             Ok(uri) => uri,
             Err(_) => format!(
                 "mysql://{}:{}@{}:{}/{}",
-                std::env::var(Self::MYSQL_USER).unwrap(),
-                std::env::var(Self::MYSQL_PASSWORD).unwrap(),
+                std::env::var(Self::MYSQL_USER).unwrap_or_else(|e| panic!(
+                    "{}: {} or {}",
+                    e,
+                    Self::MYSQL_USER,
+                    Self::DATABASE_URL,
+                )),
+                std::env::var(Self::MYSQL_PASSWORD).unwrap_or_else(|e| panic!(
+                    "{}: {} or {}",
+                    e,
+                    Self::MYSQL_PASSWORD,
+                    Self::DATABASE_URL,
+                )),
                 std::env::var(Self::MYSQL_HOST.0).unwrap_or_else(|_| Self::MYSQL_HOST.1.into()),
                 std::env::var(Self::MYSQL_PORT.0).unwrap_or_else(|_| Self::MYSQL_PORT.1.into()),
                 std::env::var(Self::MYSQL_DB.0).unwrap_or_else(|_| Self::MYSQL_DB.1.into()),
@@ -95,6 +105,7 @@ impl Configuration {
 #[cfg(test)]
 mod tests {
     use hyper::{body::to_bytes, Body, Request, StatusCode};
+    use sea_orm::DatabaseConnection;
     use tower::Service;
 
     use crate::response::result::ApiResponse;
@@ -104,7 +115,11 @@ mod tests {
     #[tokio::test]
     async fn test_health_call() {
         let (uri, body) = ("/health", Body::empty());
-        let mut api = api_router().into_make_service();
+        let mut api = api_router()
+            .with_state(AppState {
+                db: DatabaseConnection::Disconnected,
+            })
+            .into_make_service();
         let request = Request::builder().uri(uri).body(body).unwrap();
         let mut router = api.call(&request).await.unwrap();
         let response = router.call(request).await.unwrap(); // request twice ?
