@@ -1,6 +1,4 @@
-use crate::class::{
-    email::Email, id::Id, password::HashedPassword, token68::Token, username::Username,
-};
+use crate::class::{email::Email, id::Id, password::HashedPassword, username::Username};
 use sea_orm::{entity::prelude::*, ActiveValue, FromQueryResult};
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +11,6 @@ pub struct Model {
     pub username: Username,
     #[sea_orm(unique)]
     pub email: Email,
-    pub token: Option<Token>,
     pub password: HashedPassword,
 
     pub display_name: String,
