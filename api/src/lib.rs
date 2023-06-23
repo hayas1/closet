@@ -11,10 +11,7 @@ pub fn api_router() -> axum::Router<AppState> {
         .route("/", axum::routing::get(handle::health::health))
         .nest("/dev/debug", dev_debug::dev_debug_router())
         .nest("/health", handle::health::health_router())
-        .route(
-            "/*404",
-            axum::routing::get(response::error::ApiError::handle_not_found),
-        )
+        .route("/*404", axum::routing::get(response::error::ApiError::handle_not_found))
         .layer(
             tower::ServiceBuilder::new()
                 .layer(axum::error_handling::HandleErrorLayer::new(
@@ -55,9 +52,7 @@ impl Configuration {
                 std::env::var(Self::HOST.0).unwrap_or_else(|_| Self::HOST.1.into()),
                 std::env::var(Self::PORT.0).unwrap_or_else(|_| Self::PORT.1.into()),
             );
-            format!("{}:{}", ip, port)
-                .parse()
-                .unwrap_or_else(|e| panic!("{}", e))
+            format!("{}:{}", ip, port).parse().unwrap_or_else(|e| panic!("{}", e))
         })
     }
 
@@ -116,9 +111,7 @@ mod tests {
     async fn test_health_call() {
         let (uri, body) = ("/health", Body::empty());
         let mut api = api_router()
-            .with_state(AppState {
-                db: DatabaseConnection::Disconnected,
-            })
+            .with_state(AppState { db: DatabaseConnection::Disconnected })
             .into_make_service();
         let request = Request::builder().uri(uri).body(body).unwrap();
         let mut router = api.call(&request).await.unwrap();

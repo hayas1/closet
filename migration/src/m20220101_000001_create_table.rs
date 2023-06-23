@@ -10,12 +10,8 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let schema = Schema::new(manager.get_database_backend());
-        manager
-            .create_table(schema.create_table_from_entity(entity::user::Entity))
-            .await?;
-        manager
-            .create_table(schema.create_table_from_entity(entity::health::Entity))
-            .await?;
+        manager.create_table(schema.create_table_from_entity(entity::user::Entity)).await?;
+        manager.create_table(schema.create_table_from_entity(entity::health::Entity)).await?;
 
         let insert_ok = entity::health::Entity::insert(entity::health::ActiveModel {
             status: ActiveValue::Set("ok".into()),

@@ -12,11 +12,9 @@ impl Token {
         if re.is_match(token) {
             Ok(Self(token.into()))
         } else {
-            Err(
-                crate::error::validate::ValidateError::CannotValidateToken68 {
-                    invalid_token: token.into(),
-                },
-            )
+            Err(crate::error::validate::ValidateError::CannotValidateToken68 {
+                invalid_token: token.into(),
+            })
         }
     }
 }

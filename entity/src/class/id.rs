@@ -58,10 +58,7 @@ impl<T> From<Id<T>> for sea_orm::Value {
 
 impl<T> sea_orm::TryFromU64 for Id<T> {
     fn try_from_u64(_: u64) -> Result<Self, sea_orm::DbErr> {
-        Err(sea_orm::DbErr::Custom(format!(
-            "{} cannot be converted from u64",
-            stringify!(Id<T>)
-        )))
+        Err(sea_orm::DbErr::Custom(format!("{} cannot be converted from u64", stringify!(Id<T>))))
     }
 }
 

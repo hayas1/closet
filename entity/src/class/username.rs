@@ -11,11 +11,9 @@ impl Username {
         if re.is_match(username) {
             Ok(Self(username.into()))
         } else {
-            Err(
-                crate::error::validate::ValidateError::CannotValidateUsername {
-                    invalid_username: username.into(),
-                },
-            )
+            Err(crate::error::validate::ValidateError::CannotValidateUsername {
+                invalid_username: username.into(),
+            })
         }
     }
 }

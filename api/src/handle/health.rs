@@ -29,10 +29,7 @@ pub async fn rich_health(State(state): State<AppState>) -> ApiResult<RichHealth>
         .one(&state.db)
         .await?
         .ok_or_else(|| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                anyhow::anyhow!("no record in database"),
-            )
+            (StatusCode::INTERNAL_SERVER_ERROR, anyhow::anyhow!("no record in database"))
         })?;
     Ok(ApiResponse::new(health))
 }

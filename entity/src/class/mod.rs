@@ -49,12 +49,11 @@ macro_rules! impl_convert_string_value {
                 res: &sea_orm::prelude::QueryResult,
                 index: I,
             ) -> Result<Self, sea_orm::TryGetError> {
-                let val = res
-                    .try_get_by(index)
-                    .map_err(sea_orm::TryGetError::DbErr)
-                    .and_then(|opt: Option<_>| {
+                let val = res.try_get_by(index).map_err(sea_orm::TryGetError::DbErr).and_then(
+                    |opt: Option<_>| {
                         opt.ok_or_else(|| sea_orm::TryGetError::Null(format!("{:?}", index)))
-                    })?;
+                    },
+                )?;
                 Ok(<$ty as TryFrom<String>>::try_from(val)?)
             }
         }
