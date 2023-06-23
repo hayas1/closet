@@ -1,4 +1,3 @@
-pub mod anyhow;
 pub mod error;
 pub mod result;
 
