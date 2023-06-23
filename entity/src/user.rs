@@ -3,6 +3,7 @@ use crate::class::{
 };
 use sea_orm::{entity::prelude::*, ActiveValue, FromQueryResult};
 use serde::{Deserialize, Serialize};
+
 #[derive(Debug, Clone, Eq, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "users")]
 pub struct Model {
@@ -35,7 +36,7 @@ pub struct NewUser {
 )]
 pub struct PublicUser {
     pub id: Id<Model>,
-    pub username: String,
+    pub username: Username,
     pub email: Email,
     pub display_name: String,
     pub is_active: bool,
