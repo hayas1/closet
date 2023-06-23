@@ -39,7 +39,7 @@ services:
     working_dir: /app
     volumes:
       - migrate_cargo_target:/mnt/target
-      - .:/app:readonly
+      - .:/app:ro
 
   api:
     image: rust:latest
@@ -55,7 +55,7 @@ services:
     working_dir: /app
     volumes:
       - api_cargo_target:/mnt/target
-      - .:/app:readonly
+      - .:/app:ro
 
 volumes:
   mysql_store:
