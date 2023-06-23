@@ -4,7 +4,7 @@ use sea_orm::{EntityTrait, FromJsonQueryResult, FromQueryResult};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    response::{result::ApiResponse, ApiResult},
+    response::{message::Either, result::ApiResponse, ApiResult},
     AppState,
 };
 
@@ -20,8 +20,8 @@ pub fn health_router() -> Router<AppState> {
         .route("/rich", axum::routing::get(rich_health))
 }
 
-pub async fn health<'a>() -> ApiResult<&'a str> {
-    Ok(ApiResponse::new("ok"))
+pub async fn health() -> ApiResult<Either> {
+    Ok(ApiResponse::new(Either::Ok))
 }
 pub async fn rich_health(State(state): State<AppState>) -> ApiResult<RichHealth> {
     let health = entity::health::Entity::find()
@@ -44,7 +44,7 @@ mod tests {
     #[tokio::test]
     async fn test_health() {
         let health = health().await.unwrap();
-        assert_eq!(health.result(), &"ok");
+        assert_eq!(health.result(), &Either::Ok);
     }
 
     #[tokio::test]
@@ -53,8 +53,8 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         let bytes = to_bytes(response.into_body()).await.unwrap();
-        let health: ApiResponse<&str> = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(health, ApiResponse::new("ok"));
+        let health: ApiResponse<Either> = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(health, ApiResponse::new(Either::Ok));
     }
 
     // FIXME 2023/06/24 when DatabaseConnection::Disconnected, query of sea_orm 0.11.3 will panic, not return Err

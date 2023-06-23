@@ -103,7 +103,7 @@ mod tests {
     use sea_orm::DatabaseConnection;
     use tower::Service;
 
-    use crate::response::result::ApiResponse;
+    use crate::response::{message::Either, result::ApiResponse};
 
     use super::*;
 
@@ -120,7 +120,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = to_bytes(response.into_body()).await.unwrap();
         assert_eq!(&bytes[..], br#"{"result":"ok"}"#);
-        let health: ApiResponse<&str> = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(health, ApiResponse::new("ok"));
+        let health: ApiResponse<Either> = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(health, ApiResponse::new(Either::Ok));
     }
 }
