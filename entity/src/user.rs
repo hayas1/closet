@@ -1,5 +1,5 @@
 use crate::class::{email::Email, id::Id, password::HashedPassword, username::Username};
-use sea_orm::{entity::prelude::*, ActiveValue, FromQueryResult};
+use sea_orm::{entity::prelude::*, ActiveValue};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Eq, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
@@ -26,20 +26,6 @@ pub struct NewUser {
     pub username: Username,
     pub password: HashedPassword,
     pub display_name: String,
-}
-
-#[derive(
-    Debug, Clone, Eq, PartialEq, FromQueryResult, FromJsonQueryResult, Serialize, Deserialize,
-)]
-pub struct PublicUser {
-    pub id: Id<Model>,
-    pub username: Username,
-    pub email: Email,
-    pub display_name: String,
-    pub is_active: bool,
-    pub created_at: DateTimeWithTimeZone,
-    pub updated_at: DateTimeWithTimeZone,
-    pub last_login: Option<DateTimeWithTimeZone>,
 }
 
 #[derive(Clone, Debug, EnumIter, DeriveRelation)]

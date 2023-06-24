@@ -11,6 +11,7 @@ pub fn api_router() -> axum::Router<AppState> {
         .route("/", axum::routing::get(handle::health::health))
         .nest("/dev/debug", dev_debug::dev_debug_router())
         .nest("/health", handle::health::health_router())
+        .nest("/auth", handle::auth::auth_router())
         .route("/*404", axum::routing::get(response::error::ApiError::handle_not_found))
         .layer(
             tower::ServiceBuilder::new()
