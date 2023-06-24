@@ -31,6 +31,9 @@ pub enum ApiError {
 
     #[error("invalid username or password")]
     LoginFailError,
+
+    #[error("login required")]
+    LoginRequiredError,
 }
 impl ApiError {
     pub fn status_code(&self) -> &StatusCode {
@@ -41,6 +44,7 @@ impl ApiError {
             Self::TimeoutError(_) => &StatusCode::REQUEST_TIMEOUT,
             Self::UnmatchedPathError => &StatusCode::NOT_FOUND,
             Self::LoginFailError => &StatusCode::FORBIDDEN,
+            Self::LoginRequiredError => &StatusCode::FORBIDDEN,
         }
     }
     pub async fn handle_timeout(error: BoxError) -> impl IntoResponse {
