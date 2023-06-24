@@ -50,6 +50,7 @@ services:
       - migrate
     command: [ "cargo", "run", "--bin", "api" ]
     environment:
+      SECRET_KEY: closet
       DATABASE_URL: mysql://closet:closet@db:3306/db
       CARGO_TARGET_DIR: /mnt/target
     working_dir: /app
