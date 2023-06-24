@@ -1,7 +1,6 @@
-pub mod authorization;
 pub mod dev_debug;
 pub mod handle;
-pub mod logging;
+pub mod middleware;
 pub mod response;
 
 pub fn router() -> axum::Router<AppState> {
@@ -21,7 +20,7 @@ pub fn api_router() -> axum::Router<AppState> {
                 ))
                 .timeout(*Configuration::out_time()),
         )
-        .layer(axum::middleware::from_fn(logging::middleware::request_log))
+        .layer(axum::middleware::from_fn(middleware::logging::request_log))
 }
 #[derive(Clone)]
 pub struct AppState {

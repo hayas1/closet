@@ -8,7 +8,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, Query
 use serde::Deserialize;
 
 use crate::{
-    authorization::AuthUser,
+    middleware::authorization::AuthUser,
     response::{error::ApiError, message::Either, result::ApiResponse, ApiResult},
     AppState,
 };

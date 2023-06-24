@@ -47,7 +47,7 @@ impl AuthUser {
         active.last_login = ActiveValue::Set(Some(now.fixed_offset()));
         let updated = active.update(db);
 
-        Ok(Self { token, ..updated.await.unwrap().into() })
+        Ok(Self { token, ..updated.await?.into() })
     }
 }
 impl From<user::Model> for AuthUser {
