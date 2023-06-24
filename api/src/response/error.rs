@@ -2,9 +2,11 @@ use axum::{response::IntoResponse, BoxError, Json};
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use serde_with::{serde_as, DisplayFromStr};
 
 use crate::Configuration;
 
+#[serde_as]
 #[derive(Debug, thiserror::Error, Serialize, Deserialize)]
 pub enum ApiError {
     #[error("{1}")]
@@ -15,19 +17,30 @@ pub enum ApiError {
     #[serde(with = "self::serde_database")]
     DatabaseError(StatusCode, #[source] sea_orm::DbErr),
 
+    #[error("{1}")]
+    EntityError(
+        #[serde_as(as = "DisplayFromStr")] StatusCode,
+        #[source] entity::error::validate::ValidateError,
+    ),
+
     #[error("request timeout {:?}", .0)]
     TimeoutError(std::time::Duration),
 
     #[error("Not Found")]
     UnmatchedPathError,
+
+    #[error("invalid username or password")]
+    LoginFailError,
 }
 impl ApiError {
     pub fn status_code(&self) -> &StatusCode {
         match self {
-            Self::AnyhowError(code, _) => &code,
-            Self::DatabaseError(code, _) => &code,
+            Self::AnyhowError(code, _) => code,
+            Self::DatabaseError(code, _) => code,
+            Self::EntityError(code, _) => code,
             Self::TimeoutError(_) => &StatusCode::REQUEST_TIMEOUT,
             Self::UnmatchedPathError => &StatusCode::NOT_FOUND,
+            Self::LoginFailError => &StatusCode::FORBIDDEN,
         }
     }
     pub async fn handle_timeout(error: BoxError) -> impl IntoResponse {
@@ -67,6 +80,16 @@ impl From<sea_orm::DbErr> for ApiError {
 impl From<(StatusCode, sea_orm::DbErr)> for ApiError {
     fn from((status, error): (StatusCode, sea_orm::DbErr)) -> Self {
         Self::DatabaseError(status, error)
+    }
+}
+impl From<entity::error::validate::ValidateError> for ApiError {
+    fn from(error: entity::error::validate::ValidateError) -> Self {
+        Self::EntityError(StatusCode::BAD_REQUEST, error)
+    }
+}
+impl From<(StatusCode, entity::error::validate::ValidateError)> for ApiError {
+    fn from((status, error): (StatusCode, entity::error::validate::ValidateError)) -> Self {
+        Self::EntityError(status, error)
     }
 }
 
