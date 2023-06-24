@@ -44,6 +44,7 @@ pub struct AuthUser {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
     pub last_login: Option<DateTimeWithTimeZone>,
+    pub last_logout: Option<DateTimeWithTimeZone>,
 }
 impl AuthUser {
     pub async fn authenticate(
@@ -84,7 +85,12 @@ impl AuthUser {
 
         let user =
             user::Entity::find_by_id(Id::<user::Model>::from_str(&sub).ok()?).one(db).await.ok()?;
-        user.and_then(|u| Some(u.into()))
+        user.filter(|u| {
+            // if last_login <= last_logout <= now, do not verificate
+            !((u.last_login.unwrap_or_default() <= u.last_logout.unwrap_or_default())
+                && (u.last_logout.unwrap_or_default() <= Utc::now().fixed_offset()))
+        })
+        .and_then(|u| Some(u.into()))
     }
 }
 impl From<user::Model> for AuthUser {
@@ -98,6 +104,7 @@ impl From<user::Model> for AuthUser {
             created_at,
             updated_at,
             last_login,
+            last_logout,
             ..
         }: user::Model,
     ) -> Self {
@@ -112,6 +119,7 @@ impl From<user::Model> for AuthUser {
             created_at,
             updated_at,
             last_login,
+            last_logout,
         }
     }
 }
