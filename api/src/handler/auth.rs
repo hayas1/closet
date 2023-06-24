@@ -1,9 +1,8 @@
-use axum::{extract::Json, extract::State, Router};
+use axum::{extract::Json, extract::State, Extension, Router};
 use entity::{
     class::{password::RawPassword, username::Username},
     user::NewUser,
 };
-use hyper::StatusCode;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 use serde::Deserialize;
 
@@ -76,18 +75,17 @@ pub async fn login(
     }
 
     let user = AuthUser::authenticate(login_user, &state.db, &state.encoding_key);
-
     Ok(ApiResponse::new(user.await?))
 }
-pub async fn whoami(State(state): State<AppState>) -> ApiResult<AuthUser> {
-    let user = entity::user::Entity::find().one(&state.db).await?.ok_or_else(|| {
-        (StatusCode::INTERNAL_SERVER_ERROR, anyhow::anyhow!("no record in database"))
-    })?;
-    Ok(ApiResponse::new(user.into()))
+
+pub async fn whoami(Extension(user): Extension<Option<AuthUser>>) -> ApiResult<Option<AuthUser>> {
+    Ok(ApiResponse::new(user))
 }
+
 pub async fn logout(State(state): State<AppState>) -> ApiResult<Either> {
     todo!()
 }
+
 pub async fn delete(State(state): State<AppState>) -> ApiResult<Either> {
     todo!()
 }
