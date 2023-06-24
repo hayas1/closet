@@ -18,6 +18,7 @@ pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
     pub last_login: Option<DateTimeWithTimeZone>,
+    pub last_logout: Option<DateTimeWithTimeZone>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, DeriveIntoActiveModel, Serialize, Deserialize)]
