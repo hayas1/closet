@@ -40,13 +40,14 @@ pub async fn with_database_connection(
     }))
 }
 
-pub struct Configuration {}
+pub enum Configuration {}
 impl Configuration {
     pub const HOST: (&str, &str) = ("HOST", "0.0.0.0");
     pub const PORT: (&str, &str) = ("PORT", "3000");
     pub const BASE_URL: (&str, &str) = ("BASE_URL", "/");
     pub const TIMEOUT: (&str, &str) = ("TIMEOUT", "1000ms");
     pub const SECRET_KEY: &str = "SECRET_KEY";
+    pub const JWT_EXPIRED: (&str, &str) = ("EXPIRED", "7d");
     pub const DATABASE_URL: &str = "DATABASE_URL"; // sea_orm require env DATABASE_URL
     pub const MYSQL_HOST: (&str, &str) = ("MYSQL_HOST", "127.0.0.1");
     pub const MYSQL_USER: &str = "MYSQL_USER";
@@ -85,6 +86,18 @@ impl Configuration {
         _SECRET_KEY.get_or_init(|| {
             std::env::var(Self::SECRET_KEY)
                 .unwrap_or_else(|e| panic!("{}: {}", e, Self::SECRET_KEY))
+        })
+    }
+
+    pub fn jwt_expired() -> &'static chrono::Duration {
+        static _JWT_EXPIRED: std::sync::OnceLock<chrono::Duration> = std::sync::OnceLock::new();
+        _JWT_EXPIRED.get_or_init(|| {
+            let exp =
+                std::env::var(Self::JWT_EXPIRED.0).unwrap_or_else(|_| Self::JWT_EXPIRED.1.into());
+            chrono::Duration::from_std(
+                duration_str::parse(&exp).unwrap_or_else(|e| panic!("{:?}", e)),
+            )
+            .unwrap_or_else(|e| panic!("{}", e))
         })
     }
 

@@ -1,4 +1,4 @@
-use chrono::{Duration, Utc};
+use chrono::Utc;
 use entity::{
     class::{email::Email, id::Id, username::Username},
     user,
@@ -10,7 +10,7 @@ use sea_orm::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::response::error::ApiError;
+use crate::{response::error::ApiError, Configuration};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TokenClaim {
@@ -38,8 +38,11 @@ impl AuthUser {
         key: &EncodingKey,
     ) -> Result<Self, ApiError> {
         let now = Utc::now();
-        let (sub, iat, exp) =
-            (user.id.to_string(), now.timestamp(), (now + Duration::days(30)).timestamp()); // FIXME from Configuration
+        let (sub, iat, exp) = (
+            user.id.to_string(),
+            now.timestamp(),
+            (now + Configuration::jwt_expired().clone()).timestamp(),
+        );
         let claim = TokenClaim { sub, iat, exp };
         let token = Some(encode(&Header::default(), &claim, key).map_err(|e| anyhow::anyhow!(e))?);
 
