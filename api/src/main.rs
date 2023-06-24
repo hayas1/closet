@@ -1,4 +1,4 @@
-use api::{router, with_database_connection, Configuration};
+use api::{router, with_auth, Configuration};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -7,7 +7,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (router, bind) = (router(), Configuration::address());
     let app = axum::Server::bind(&bind)
-        .serve(with_database_connection(router).await?.into_make_service())
+        .serve(with_auth(router).await?.into_make_service())
         .with_graceful_shutdown(async {
             tokio::signal::ctrl_c().await.expect("expect tokio signal ctrl-c");
             tracing::info!("stopping app...");

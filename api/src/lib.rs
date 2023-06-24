@@ -13,14 +13,6 @@ pub fn api_router() -> axum::Router<AppState> {
         .nest("/health", handler::health::health_router())
         .nest("/auth", handler::auth::auth_router())
         .route("/*404", axum::routing::get(response::error::ApiError::handle_not_found))
-        .layer(
-            tower::ServiceBuilder::new()
-                .layer(axum::error_handling::HandleErrorLayer::new(
-                    response::error::ApiError::handle_timeout,
-                ))
-                .timeout(*Configuration::out_time()),
-        )
-        .layer(axum::middleware::from_fn(middleware::logging::request_log))
 }
 #[derive(Clone)]
 pub struct AppState {
@@ -28,16 +20,25 @@ pub struct AppState {
     pub encoding_key: jsonwebtoken::EncodingKey,
     pub decoding_key: jsonwebtoken::DecodingKey,
 }
-pub async fn with_database_connection(
-    router: axum::Router<AppState>,
-) -> Result<axum::Router, sea_orm::DbErr> {
+pub async fn with_auth(router: axum::Router<AppState>) -> Result<axum::Router, sea_orm::DbErr> {
     let db = sea_orm::Database::connect(Configuration::database_uri());
     let secret = Configuration::secret_key();
-    Ok(router.with_state(AppState {
+    let state = AppState {
         db: db.await?,
         encoding_key: jsonwebtoken::EncodingKey::from_secret(secret.as_ref()),
         decoding_key: jsonwebtoken::DecodingKey::from_secret(secret.as_ref()),
-    }))
+    };
+    Ok(router
+        .with_state(state.clone())
+        .layer(axum::middleware::from_fn_with_state(state, middleware::authorization::verification))
+        .layer(
+            tower::ServiceBuilder::new()
+                .layer(axum::error_handling::HandleErrorLayer::new(
+                    response::error::ApiError::handle_timeout,
+                ))
+                .timeout(*Configuration::out_time()),
+        )
+        .layer(axum::middleware::from_fn(middleware::logging::request_log)))
 }
 
 pub enum Configuration {}
