@@ -4,7 +4,10 @@ use entity::{
     user,
 };
 use jsonwebtoken::{encode, EncodingKey, Header};
-use sea_orm::{prelude::DateTimeWithTimeZone, ActiveModelTrait, ActiveValue, DatabaseConnection};
+use sea_orm::{
+    prelude::DateTimeWithTimeZone, ActiveModelTrait, ActiveValue, DatabaseConnection,
+    IntoActiveModel,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::response::error::ApiError;
@@ -30,7 +33,7 @@ pub struct AuthUser {
 }
 impl AuthUser {
     pub async fn authenticate(
-        user: &user::Model,
+        user: user::Model,
         db: &DatabaseConnection,
         key: &EncodingKey,
     ) -> Result<Self, ApiError> {
@@ -40,13 +43,11 @@ impl AuthUser {
         let claim = TokenClaim { sub, iat, exp };
         let token = Some(encode(&Header::default(), &claim, key).map_err(|e| anyhow::anyhow!(e))?);
 
-        let active = user::ActiveModel {
-            last_login: ActiveValue::Set(Some(now.fixed_offset())),
-            ..Default::default()
-        };
+        let mut active = user.into_active_model();
+        active.last_login = ActiveValue::Set(Some(now.fixed_offset()));
         let updated = active.update(db);
 
-        Ok(Self { token, ..updated.await?.into() })
+        Ok(Self { token, ..updated.await.unwrap().into() })
     }
 }
 impl From<user::Model> for AuthUser {

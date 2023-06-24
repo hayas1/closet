@@ -75,7 +75,7 @@ pub async fn login(
         Err(ApiError::LoginFailError)?
     }
 
-    let user = AuthUser::authenticate(&login_user, &state.db, &state.encoding_key);
+    let user = AuthUser::authenticate(login_user, &state.db, &state.encoding_key);
 
     Ok(ApiResponse::new(user.await?))
 }
