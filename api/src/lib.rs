@@ -1,3 +1,4 @@
+pub mod authorization;
 pub mod dev_debug;
 pub mod handle;
 pub mod logging;
@@ -25,12 +26,19 @@ pub fn api_router() -> axum::Router<AppState> {
 #[derive(Clone)]
 pub struct AppState {
     pub db: sea_orm::DatabaseConnection,
+    pub encoding_key: jsonwebtoken::EncodingKey,
+    pub decoding_key: jsonwebtoken::DecodingKey,
 }
 pub async fn with_database_connection(
     router: axum::Router<AppState>,
 ) -> Result<axum::Router, sea_orm::DbErr> {
     let db = sea_orm::Database::connect(Configuration::database_uri());
-    Ok(router.with_state(AppState { db: db.await? }))
+    let secret = Configuration::secret_key();
+    Ok(router.with_state(AppState {
+        db: db.await?,
+        encoding_key: jsonwebtoken::EncodingKey::from_secret(secret.as_ref()),
+        decoding_key: jsonwebtoken::DecodingKey::from_secret(secret.as_ref()),
+    }))
 }
 
 pub struct Configuration {}
@@ -39,6 +47,7 @@ impl Configuration {
     pub const PORT: (&str, &str) = ("PORT", "3000");
     pub const BASE_URL: (&str, &str) = ("BASE_URL", "/");
     pub const TIMEOUT: (&str, &str) = ("TIMEOUT", "1000ms");
+    pub const SECRET_KEY: &str = "SECRET_KEY";
     pub const DATABASE_URL: &str = "DATABASE_URL"; // sea_orm require env DATABASE_URL
     pub const MYSQL_HOST: (&str, &str) = ("MYSQL_HOST", "127.0.0.1");
     pub const MYSQL_USER: &str = "MYSQL_USER";
@@ -72,6 +81,14 @@ impl Configuration {
         })
     }
 
+    pub fn secret_key() -> &'static str {
+        static _SECRET_KEY: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+        _SECRET_KEY.get_or_init(|| {
+            std::env::var(Self::SECRET_KEY)
+                .unwrap_or_else(|e| panic!("{}: {}", e, Self::SECRET_KEY))
+        })
+    }
+
     pub fn database_uri() -> &'static str {
         static _DATABASE_URI: std::sync::OnceLock<String> = std::sync::OnceLock::new();
         _DATABASE_URI.get_or_init(|| match std::env::var(Self::DATABASE_URL) {
@@ -101,6 +118,7 @@ impl Configuration {
 #[cfg(test)]
 mod tests {
     use hyper::{body::to_bytes, Body, Request, StatusCode};
+    use jsonwebtoken::{DecodingKey, EncodingKey};
     use sea_orm::DatabaseConnection;
     use tower::Service;
 
@@ -112,7 +130,11 @@ mod tests {
     async fn test_health_call() {
         let (uri, body) = ("/health", Body::empty());
         let mut api = api_router()
-            .with_state(AppState { db: DatabaseConnection::Disconnected })
+            .with_state(AppState {
+                db: DatabaseConnection::Disconnected,
+                encoding_key: EncodingKey::from_secret("secret".as_ref()),
+                decoding_key: DecodingKey::from_secret("secret".as_ref()),
+            })
             .into_make_service();
         let request = Request::builder().uri(uri).body(body).unwrap();
         let mut router = api.call(&request).await.unwrap();
