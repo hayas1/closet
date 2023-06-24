@@ -1,5 +1,5 @@
 pub mod dev_debug;
-pub mod handle;
+pub mod handler;
 pub mod middleware;
 pub mod response;
 
@@ -8,10 +8,10 @@ pub fn router() -> axum::Router<AppState> {
 }
 pub fn api_router() -> axum::Router<AppState> {
     axum::Router::new()
-        .route("/", axum::routing::get(handle::health::health))
+        .route("/", axum::routing::get(handler::health::health))
         .nest("/dev/debug", dev_debug::dev_debug_router())
-        .nest("/health", handle::health::health_router())
-        .nest("/auth", handle::auth::auth_router())
+        .nest("/health", handler::health::health_router())
+        .nest("/auth", handler::auth::auth_router())
         .route("/*404", axum::routing::get(response::error::ApiError::handle_not_found))
         .layer(
             tower::ServiceBuilder::new()
