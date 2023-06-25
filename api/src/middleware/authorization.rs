@@ -9,8 +9,8 @@ use entity::{
 use hyper::{header, http::HeaderValue, HeaderMap, Request};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use sea_orm::{
-    prelude::DateTimeWithTimeZone, ActiveModelTrait, ActiveValue, DatabaseConnection, EntityTrait,
-    IntoActiveModel,
+    prelude::DateTimeWithTimeZone, ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection,
+    EntityTrait, IntoActiveModel, QueryFilter,
 };
 use serde::{Deserialize, Serialize};
 
@@ -41,6 +41,7 @@ pub struct AuthUser {
     pub token: Option<String>,
     pub display_name: String,
     pub is_active: bool,
+    pub confirmed: bool,
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
     pub last_login: Option<DateTimeWithTimeZone>,
@@ -83,8 +84,11 @@ impl AuthUser {
         let TokenClaims { sub, .. } =
             jsonwebtoken::decode::<TokenClaims>(&token, &key, &Validation::default()).ok()?.claims;
 
-        let user =
-            user::Entity::find_by_id(Id::<user::Model>::from_str(&sub).ok()?).one(db).await.ok()?;
+        let user = user::Entity::find_by_id(Id::<user::Model>::from_str(&sub).ok()?)
+            .filter(user::Column::IsActive.eq(true))
+            .one(db)
+            .await
+            .ok()?;
         user.filter(|u| {
             // if last_login <= last_logout <= now, do not verificate
             !((u.last_login.unwrap_or_default() <= u.last_logout.unwrap_or_default())
@@ -101,6 +105,7 @@ impl From<user::Model> for AuthUser {
             email,
             display_name,
             is_active,
+            confirmed,
             created_at,
             updated_at,
             last_login,
@@ -116,6 +121,7 @@ impl From<user::Model> for AuthUser {
             token,
             display_name,
             is_active,
+            confirmed,
             created_at,
             updated_at,
             last_login,

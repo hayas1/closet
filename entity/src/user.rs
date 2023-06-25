@@ -14,6 +14,7 @@ pub struct Model {
     pub password: HashedPassword,
 
     pub display_name: String,
+    pub confirmed: bool,
     pub is_active: bool,
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
@@ -22,11 +23,12 @@ pub struct Model {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, DeriveIntoActiveModel, Serialize, Deserialize)]
-pub struct NewUser {
+pub struct InsertUser {
     pub email: Email,
     pub username: Username,
     pub password: HashedPassword,
     pub display_name: String,
+    pub is_active: bool,
 }
 
 #[derive(Clone, Debug, EnumIter, DeriveRelation)]
@@ -49,6 +51,10 @@ impl ActiveModelBehavior for ActiveModel {
         self.is_active = match self.is_active {
             ActiveValue::NotSet => ActiveValue::Set(false),
             set_or_unchanged => set_or_unchanged,
+        };
+        self.confirmed = match self.confirmed {
+            ActiveValue::NotSet => ActiveValue::Set(false),
+            confirmed => confirmed,
         };
         if self.is_changed() {
             let timestamp = chrono::Local::now().into();

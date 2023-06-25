@@ -2,7 +2,7 @@ use axum::{extract::Json, extract::State, Extension, Router};
 use chrono::Utc;
 use entity::{
     class::{password::RawPassword, username::Username},
-    user::{self, NewUser},
+    user::{self, InsertUser},
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter,
@@ -11,7 +11,7 @@ use serde::Deserialize;
 
 use crate::{
     middleware::authorization::AuthUser,
-    response::{error::ApiError, message::Either, result::ApiResponse, ApiResult},
+    response::{error::ApiError, result::ApiResponse, ApiResult},
     AppState,
 };
 
@@ -20,8 +20,9 @@ pub fn auth_router() -> Router<AppState> {
         .route("/create", axum::routing::post(create))
         .route("/login", axum::routing::post(login))
         .route("/whoami", axum::routing::get(whoami))
+        // TODO .route("/confirm/:token", axum::routing::get(confirm))
         .route("/logout", axum::routing::post(logout))
-        .route("/delete", axum::routing::post(delete))
+        .route("/deactivate", axum::routing::post(deactivate))
 }
 
 #[derive(Deserialize)]
@@ -31,7 +32,7 @@ pub struct UserCreate {
     pub password: String,
     pub display_name: String,
 }
-impl TryFrom<UserCreate> for NewUser {
+impl TryFrom<UserCreate> for InsertUser {
     type Error = entity::error::validate::ValidateError;
     fn try_from(
         UserCreate { email, username, password, display_name }: UserCreate,
@@ -42,15 +43,16 @@ impl TryFrom<UserCreate> for NewUser {
             <String as TryInto<RawPassword>>::try_into(password)?.hashed()?,
             display_name,
         );
-        Ok(NewUser { email, username, password, display_name })
+        let is_active = true;
+        Ok(InsertUser { email, username, password, display_name, is_active })
     }
 }
 pub async fn create(
     State(state): State<AppState>,
     Json(schema): Json<UserCreate>,
 ) -> ApiResult<AuthUser> {
-    let new_user: NewUser = schema.try_into()?;
-    let created = new_user.into_active_model().insert(&state.db);
+    let insert_user: InsertUser = schema.try_into()?;
+    let created = insert_user.into_active_model().insert(&state.db);
     Ok(ApiResponse::new(created.await?.into()))
 }
 
@@ -69,6 +71,7 @@ pub async fn login(
     );
     let login_user = entity::user::Entity::find()
         .filter(entity::user::Column::Username.eq(username))
+        .filter(entity::user::Column::IsActive.eq(true))
         .one(&state.db)
         .await
         .unwrap_or(None)
@@ -100,6 +103,16 @@ pub async fn logout(
     Ok(ApiResponse::new(logout.await?.into()))
 }
 
-pub async fn delete(State(state): State<AppState>) -> ApiResult<Either> {
-    todo!()
+pub async fn deactivate(
+    State(state): State<AppState>,
+    Extension(user): Extension<Option<AuthUser>>,
+) -> ApiResult<AuthUser> {
+    let mut active = user::Entity::find_by_id(user.ok_or_else(|| ApiError::LoginRequiredError)?.id)
+        .one(&state.db)
+        .await?
+        .expect("login user must exist")
+        .into_active_model();
+    active.is_active = ActiveValue::Set(false);
+    let deleted = active.update(&state.db);
+    Ok(ApiResponse::new(deleted.await?.into()))
 }
