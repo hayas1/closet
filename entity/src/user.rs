@@ -11,6 +11,7 @@ pub struct Model {
     pub username: Username,
     #[sea_orm(unique)]
     pub email: Email,
+    #[serde(skip_serializing_if = "HashedPassword::is_empty")]
     pub password: HashedPassword,
 
     pub display_name: String,
@@ -20,6 +21,13 @@ pub struct Model {
     pub updated_at: DateTimeWithTimeZone,
     pub last_login: Option<DateTimeWithTimeZone>,
     pub last_logout: Option<DateTimeWithTimeZone>,
+}
+impl Model {
+    // for auth user struct // TODO better implementation
+    pub fn empty_password(mut self) -> Self {
+        self.password = HashedPassword::empty();
+        self
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, DeriveIntoActiveModel, Serialize, Deserialize)]

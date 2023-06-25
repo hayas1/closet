@@ -3,14 +3,14 @@ use std::str::FromStr;
 use axum::{extract::State, middleware::Next, response::Response};
 use chrono::Utc;
 use entity::{
-    class::{email::Email, id::Id, username::Username},
-    user,
+    class::id::Id,
+    user::{self, ActiveModel},
 };
 use hyper::{header, http::HeaderValue, HeaderMap, Request};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use sea_orm::{
-    prelude::DateTimeWithTimeZone, ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection,
-    EntityTrait, IntoActiveModel, QueryFilter,
+    ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel,
+    QueryFilter,
 };
 use serde::{Deserialize, Serialize};
 
@@ -35,19 +35,18 @@ pub struct TokenClaims {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AuthUser {
-    pub id: Id<user::Model>,
-    pub username: Username,
-    pub email: Email,
     pub token: Option<String>,
-    pub display_name: String,
-    pub is_active: bool,
-    pub confirmed: bool,
-    pub created_at: DateTimeWithTimeZone,
-    pub updated_at: DateTimeWithTimeZone,
-    pub last_login: Option<DateTimeWithTimeZone>,
-    pub last_logout: Option<DateTimeWithTimeZone>,
+    pub user: user::Model,
 }
 impl AuthUser {
+    pub fn new(token: Option<String>, user: user::Model) -> Self {
+        let user = user.empty_password();
+        Self { token, user }
+    }
+    pub fn into_active_model(self) -> ActiveModel {
+        self.user.into_active_model()
+    }
+
     pub async fn authenticate(
         user: user::Model,
         db: &DatabaseConnection,
@@ -60,16 +59,14 @@ impl AuthUser {
             (now + Configuration::jwt_expired().clone()).timestamp(),
         );
         let claims = TokenClaims { sub, iat, exp };
-        let token = Some(
-            jsonwebtoken::encode(&Header::default(), &claims, key)
-                .map_err(|e| anyhow::anyhow!(e))?,
-        );
+        let token = jsonwebtoken::encode(&Header::default(), &claims, key)
+            .map_err(|e| anyhow::anyhow!(e))?;
 
         let mut active = user.into_active_model();
         active.last_login = ActiveValue::Set(Some(now.fixed_offset()));
-        let updated = active.update(db);
+        let user = active.update(db).await?;
 
-        Ok(Self { token, ..updated.await?.into() })
+        Ok(Self::new(Some(token), user))
     }
     pub async fn verificate(
         headers: &HeaderMap<HeaderValue>,
@@ -84,48 +81,17 @@ impl AuthUser {
         let TokenClaims { sub, .. } =
             jsonwebtoken::decode::<TokenClaims>(&token, &key, &Validation::default()).ok()?.claims;
 
-        let user = user::Entity::find_by_id(Id::<user::Model>::from_str(&sub).ok()?)
+        let found = user::Entity::find_by_id(Id::<user::Model>::from_str(&sub).ok()?)
             .filter(user::Column::IsActive.eq(true))
             .one(db)
             .await
             .ok()?;
-        user.filter(|u| {
+        let user = found.filter(|u| {
             // if last_login <= last_logout <= now, do not verificate
             !((u.last_login.unwrap_or_default() <= u.last_logout.unwrap_or_default())
                 && (u.last_logout.unwrap_or_default() <= Utc::now().fixed_offset()))
-        })
-        .and_then(|u| Some(u.into()))
-    }
-}
-impl From<user::Model> for AuthUser {
-    fn from(
-        user::Model {
-            id,
-            username,
-            email,
-            display_name,
-            is_active,
-            confirmed,
-            created_at,
-            updated_at,
-            last_login,
-            last_logout,
-            ..
-        }: user::Model,
-    ) -> Self {
-        let token = None;
-        Self {
-            id,
-            username,
-            email,
-            token,
-            display_name,
-            is_active,
-            confirmed,
-            created_at,
-            updated_at,
-            last_login,
-            last_logout,
-        }
+        })?;
+
+        Some(Self::new(Some(token.into()), user))
     }
 }

@@ -40,6 +40,13 @@ impl HashedPassword {
     pub fn same(&self, hashed: &HashedPassword) -> bool {
         self.0 == hashed.0
     }
+
+    pub fn empty() -> Self {
+        Self("".into())
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 impl std::fmt::Display for HashedPassword {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

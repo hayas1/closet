@@ -2,7 +2,7 @@ use axum::{extract::Json, extract::State, Extension, Router};
 use chrono::Utc;
 use entity::{
     class::{password::RawPassword, username::Username},
-    user::{self, InsertUser},
+    user::InsertUser,
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter,
@@ -55,7 +55,7 @@ pub async fn create(
 ) -> ApiResult<AuthUser> {
     let insert_user: InsertUser = schema.try_into()?;
     let created = insert_user.into_active_model().insert(&state.db);
-    Ok(ApiResponse::new(created.await?.into()))
+    Ok(ApiResponse::new(AuthUser::new(None, created.await?)))
 }
 
 #[derive(Deserialize)]
@@ -71,20 +71,20 @@ pub async fn login(
         <String as TryInto<Username>>::try_into(schema.username)?,
         <String as TryInto<RawPassword>>::try_into(schema.password)?,
     );
-    let login_user = entity::user::Entity::find()
+    let user = entity::user::Entity::find()
         .filter(entity::user::Column::Username.eq(username))
         .one(&state.db)
         .await
         .unwrap_or(None)
         .ok_or_else(|| ApiError::LoginFailError)?;
-    if !login_user.password.verify(password) {
+    if !user.password.verify(password) {
         Err(ApiError::LoginFailError)?
-    } else if !login_user.is_active {
+    } else if !user.is_active {
         Err(ApiError::InactiveUserError)?
     }
 
-    let user = AuthUser::authenticate(login_user, &state.db, &state.encoding_key);
-    Ok(ApiResponse::new(user.await?))
+    let login = AuthUser::authenticate(user, &state.db, &state.encoding_key);
+    Ok(ApiResponse::new(login.await?))
 }
 
 pub async fn whoami(Extension(user): Extension<Option<AuthUser>>) -> ApiResult<Option<AuthUser>> {
@@ -96,26 +96,18 @@ pub async fn logout(
     Extension(user): Extension<Option<AuthUser>>,
 ) -> ApiResult<AuthUser> {
     // FIXME verificate and record, access to db twice
-    let mut active = user::Entity::find_by_id(user.ok_or_else(|| ApiError::LoginRequiredError)?.id)
-        .one(&state.db)
-        .await?
-        .expect("login user must exist")
-        .into_active_model();
+    let mut active = user.ok_or_else(|| ApiError::LoginRequiredError)?.into_active_model();
     active.last_logout = ActiveValue::Set(Some(Utc::now().fixed_offset()));
     let logout = active.update(&state.db);
-    Ok(ApiResponse::new(logout.await?.into()))
+    Ok(ApiResponse::new(AuthUser::new(None, logout.await?)))
 }
 
 pub async fn deactivate(
     State(state): State<AppState>,
     Extension(user): Extension<Option<AuthUser>>,
 ) -> ApiResult<AuthUser> {
-    let mut active = user::Entity::find_by_id(user.ok_or_else(|| ApiError::LoginRequiredError)?.id)
-        .one(&state.db)
-        .await?
-        .expect("login user must exist")
-        .into_active_model();
+    let mut active = user.ok_or_else(|| ApiError::LoginRequiredError)?.into_active_model();
     active.is_active = ActiveValue::Set(false);
-    let deleted = active.update(&state.db);
-    Ok(ApiResponse::new(deleted.await?.into()))
+    let deactivated = active.update(&state.db);
+    Ok(ApiResponse::new(AuthUser::new(None, deactivated.await?)))
 }
