@@ -78,7 +78,7 @@ impl AuthUser {
         let (bearer, token) = header_value.split_at(BEARER.len());
         (bearer == BEARER).then(|| ())?;
 
-        let TokenClaims { sub, .. } =
+        let TokenClaims { sub, iat, .. } =
             jsonwebtoken::decode::<TokenClaims>(&token, &key, &Validation::default()).ok()?.claims;
 
         let found = user::Entity::find_by_id(Id::<user::Model>::from_str(&sub).ok()?)
@@ -87,9 +87,8 @@ impl AuthUser {
             .await
             .ok()?;
         let user = found.filter(|u| {
-            // if last_login <= last_logout <= now, do not verificate
-            !((u.last_login.unwrap_or_default() <= u.last_logout.unwrap_or_default())
-                && (u.last_logout.unwrap_or_default() <= Utc::now().fixed_offset()))
+            // token issued before last_logout is denied
+            u.last_logout.unwrap_or_default().timestamp() <= iat
         })?;
 
         Some(Self::new(Some(token.into()), user))
