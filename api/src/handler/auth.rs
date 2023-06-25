@@ -21,6 +21,8 @@ pub fn auth_router() -> Router<AppState> {
         .route("/login", axum::routing::post(login))
         .route("/whoami", axum::routing::get(whoami))
         // TODO .route("/confirm/:token", axum::routing::get(confirm))
+        // TODO .route("/update", axum::routing::get(update))
+        // TODO .route("/update/password", axum::routing::get(update_password))
         .route("/logout", axum::routing::post(logout))
         .route("/deactivate", axum::routing::post(deactivate))
 }
