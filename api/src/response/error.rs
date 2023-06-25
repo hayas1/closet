@@ -32,6 +32,9 @@ pub enum ApiError {
     #[error("invalid username or password")]
     LoginFailError,
 
+    #[error("inactive user")]
+    InactiveUserError,
+
     #[error("login required")]
     LoginRequiredError,
 }
@@ -44,6 +47,7 @@ impl ApiError {
             Self::TimeoutError(_) => &StatusCode::REQUEST_TIMEOUT,
             Self::UnmatchedPathError => &StatusCode::NOT_FOUND,
             Self::LoginFailError => &StatusCode::FORBIDDEN,
+            Self::InactiveUserError => &StatusCode::FORBIDDEN,
             Self::LoginRequiredError => &StatusCode::FORBIDDEN,
         }
     }

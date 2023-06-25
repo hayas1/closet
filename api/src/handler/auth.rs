@@ -71,13 +71,14 @@ pub async fn login(
     );
     let login_user = entity::user::Entity::find()
         .filter(entity::user::Column::Username.eq(username))
-        .filter(entity::user::Column::IsActive.eq(true))
         .one(&state.db)
         .await
         .unwrap_or(None)
         .ok_or_else(|| ApiError::LoginFailError)?;
     if !login_user.password.verify(password) {
         Err(ApiError::LoginFailError)?
+    } else if !login_user.is_active {
+        Err(ApiError::InactiveUserError)?
     }
 
     let user = AuthUser::authenticate(login_user, &state.db, &state.encoding_key);
