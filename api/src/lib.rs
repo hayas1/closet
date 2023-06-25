@@ -12,7 +12,7 @@ pub fn api_router() -> axum::Router<AppState> {
         .nest("/dev/debug", dev_debug::dev_debug_router())
         .nest("/health", handler::health::health_router())
         .nest("/auth", handler::auth::auth_router())
-        .route("/*404", axum::routing::get(response::error::ApiError::handle_not_found))
+        .route("/*404", axum::routing::any(response::error::ApiError::handle_not_found))
 }
 #[derive(Clone)]
 pub struct AppState {
