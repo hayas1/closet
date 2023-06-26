@@ -4,7 +4,7 @@ use axum::{extract::State, middleware::Next, response::Response};
 use chrono::Utc;
 use entity::{
     class::id::Id,
-    user::{self, ActiveModel},
+    model::user::{self, ActiveModel},
 };
 use hyper::{header, http::HeaderValue, HeaderMap, Request};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};

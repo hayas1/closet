@@ -1,4 +1,5 @@
 use axum::{extract::State, Router};
+use entity::model::health;
 use hyper::StatusCode;
 use sea_orm::{EntityTrait, FromJsonQueryResult, FromQueryResult};
 use serde::{Deserialize, Serialize};
@@ -24,13 +25,10 @@ pub async fn health() -> ApiResult<Either> {
     Ok(ApiResponse::new(Either::Ok))
 }
 pub async fn rich_health(State(state): State<AppState>) -> ApiResult<RichHealth> {
-    let health = entity::health::Entity::find()
-        .into_model::<RichHealth>()
-        .one(&state.db)
-        .await?
-        .ok_or_else(|| {
-            (StatusCode::INTERNAL_SERVER_ERROR, anyhow::anyhow!("no record in database"))
-        })?;
+    let health =
+        health::Entity::find().into_model::<RichHealth>().one(&state.db).await?.ok_or_else(
+            || (StatusCode::INTERNAL_SERVER_ERROR, anyhow::anyhow!("no record in database")),
+        )?;
     Ok(ApiResponse::new(health))
 }
 

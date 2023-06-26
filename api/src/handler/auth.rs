@@ -2,7 +2,7 @@ use axum::{extract::Json, extract::State, Extension, Router};
 use chrono::Utc;
 use entity::{
     class::{password::Password, username::Username},
-    user::InsertUser,
+    model::user::{self, InsertUser},
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter,
@@ -65,8 +65,8 @@ pub async fn login(
     Json(schema): Json<UserLogin>,
 ) -> ApiResult<AuthUser> {
     let (username, raw) = (Username::parse(&schema.username)?, schema.password.as_bytes());
-    let user = entity::user::Entity::find()
-        .filter(entity::user::Column::Username.eq(username))
+    let user = user::Entity::find()
+        .filter(user::Column::Username.eq(username))
         .one(&state.db)
         .await
         .unwrap_or(None)
