@@ -1,4 +1,4 @@
-use crate::class::{email::Email, id::Id, password::HashedPassword, username::Username};
+use crate::class::{email::Email, id::Id, password::Password, username::Username};
 use sea_orm::{entity::prelude::*, ActiveValue};
 use serde::{Deserialize, Serialize};
 
@@ -11,8 +11,8 @@ pub struct Model {
     pub username: Username,
     #[sea_orm(unique)]
     pub email: Email,
-    #[serde(skip_serializing_if = "HashedPassword::is_empty")]
-    pub password: HashedPassword,
+    #[serde(skip_serializing_if = "Password::is_unauthenticated")]
+    pub password: Password,
 
     pub display_name: String,
     pub confirmed: bool,
@@ -24,8 +24,8 @@ pub struct Model {
 }
 impl Model {
     // for auth user struct // TODO better implementation
-    pub fn empty_password(mut self) -> Self {
-        self.password = HashedPassword::empty();
+    pub fn unauthenticated(mut self) -> Self {
+        self.password = Password::Unauthenticated;
         self
     }
 }
@@ -34,7 +34,7 @@ impl Model {
 pub struct InsertUser {
     pub email: Email,
     pub username: Username,
-    pub password: HashedPassword,
+    pub password: Password,
     pub display_name: String,
     pub is_active: bool,
 }

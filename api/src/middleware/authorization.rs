@@ -40,7 +40,7 @@ pub struct AuthUser {
 }
 impl AuthUser {
     pub fn new(token: Option<String>, user: user::Model) -> Self {
-        let user = user.empty_password();
+        let user = user.unauthenticated();
         Self { token, user }
     }
     pub fn into_active_model(self) -> ActiveModel {

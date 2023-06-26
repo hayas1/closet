@@ -1,7 +1,7 @@
 use axum::{extract::Json, extract::State, Extension, Router};
 use chrono::Utc;
 use entity::{
-    class::{password::RawPassword, username::Username},
+    class::{password::Password, username::Username},
     user::InsertUser,
 };
 use sea_orm::{
@@ -39,12 +39,9 @@ impl TryFrom<UserCreate> for InsertUser {
     fn try_from(
         UserCreate { email, username, password, display_name }: UserCreate,
     ) -> Result<Self, Self::Error> {
-        let (email, username, password, display_name) = (
-            email.try_into()?,
-            username.try_into()?,
-            <String as TryInto<RawPassword>>::try_into(password)?.hashed()?,
-            display_name,
-        );
+        let (email, username, display_name) =
+            (email.try_into()?, username.try_into()?, display_name);
+        let password = Password::hash(password.as_bytes())?;
         let is_active = true;
         Ok(InsertUser { email, username, password, display_name, is_active })
     }
@@ -67,17 +64,14 @@ pub async fn login(
     State(state): State<AppState>,
     Json(schema): Json<UserLogin>,
 ) -> ApiResult<AuthUser> {
-    let (username, password) = (
-        <String as TryInto<Username>>::try_into(schema.username)?,
-        <String as TryInto<RawPassword>>::try_into(schema.password)?,
-    );
+    let (username, raw) = (Username::parse(&schema.username)?, schema.password.as_bytes());
     let user = entity::user::Entity::find()
         .filter(entity::user::Column::Username.eq(username))
         .one(&state.db)
         .await
         .unwrap_or(None)
         .ok_or_else(|| ApiError::LoginFailError)?;
-    if !user.password.verify(password) {
+    if !user.password.verify(raw) {
         Err(ApiError::LoginFailError)?
     } else if !user.is_active {
         Err(ApiError::InactiveUserError)?
