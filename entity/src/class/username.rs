@@ -1,19 +1,19 @@
 use serde::{Deserialize, Serialize};
 
+use crate::error::{EntityError, ValidateError};
+
 pub const REGEX: &str = r"^[a-zA-Z0-9_]+$";
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
 pub struct Username(String);
 impl Username {
-    pub fn parse(username: &str) -> Result<Self, crate::error::validate::ValidateError> {
+    pub fn parse(username: &str) -> Result<Self, EntityError> {
         let re = regex::Regex::new(REGEX).expect("invalid regex");
         if re.is_match(username) {
             Ok(Self(username.into()))
         } else {
-            Err(crate::error::validate::ValidateError::CannotValidateUsername {
-                invalid_username: username.into(),
-            })
+            Err(ValidateError::CannotValidateUsername { invalid_username: username.into() })?
         }
     }
 }
@@ -23,7 +23,7 @@ impl std::fmt::Display for Username {
     }
 }
 impl std::str::FromStr for Username {
-    type Err = crate::error::validate::ValidateError;
+    type Err = EntityError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::parse(s)
     }

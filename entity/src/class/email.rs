@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::error::{EntityError, ValidateError};
+
 pub const LOCAL_PART_REGEX: &str = r"[a-zA-Z0-9_+-]+(\.[a-zA-Z0-9_+-]+)*";
 pub const DOMAIN_REGEX: &str = r"([a-zA-Z0-9][a-zA-Z0-9-]*\.)+[a-zA-Z]{2,}";
 
@@ -11,7 +13,7 @@ pub struct Email {
 }
 
 impl Email {
-    pub fn parse(email: &str) -> Result<Self, crate::error::validate::ValidateError> {
+    pub fn parse(email: &str) -> Result<Self, EntityError> {
         let regexp = format!("^{}@{}$", LOCAL_PART_REGEX, DOMAIN_REGEX);
         let re = regex::Regex::new(&regexp).expect("invalid regex");
         if re.is_match(email) {
@@ -19,9 +21,7 @@ impl Email {
             let (local_part, domain) = (splitted[0].to_string(), splitted[1].to_string());
             Ok(Self { local_part, domain })
         } else {
-            Err(crate::error::validate::ValidateError::CannotValidateEmail {
-                invalid_email: email.into(),
-            })
+            Err(ValidateError::CannotValidateEmail { invalid_email: email.into() })?
         }
     }
 }
@@ -31,7 +31,7 @@ impl std::fmt::Display for Email {
     }
 }
 impl std::str::FromStr for Email {
-    type Err = crate::error::validate::ValidateError;
+    type Err = EntityError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::parse(s)
     }

@@ -6,13 +6,13 @@ pub mod username;
 macro_rules! impl_convert_string_value {
     ($ty: ty) => {
         impl TryFrom<&str> for $ty {
-            type Error = crate::error::validate::ValidateError;
+            type Error = crate::error::EntityError;
             fn try_from(s: &str) -> Result<Self, Self::Error> {
                 <$ty as std::str::FromStr>::from_str(s)
             }
         }
         impl TryFrom<String> for $ty {
-            type Error = crate::error::validate::ValidateError;
+            type Error = crate::error::EntityError;
             fn try_from(s: String) -> Result<Self, Self::Error> {
                 <$ty as std::str::FromStr>::from_str(&s)
             }

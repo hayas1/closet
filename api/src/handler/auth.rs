@@ -2,6 +2,7 @@ use axum::{extract::Json, extract::State, Extension, Router};
 use chrono::Utc;
 use entity::{
     class::{password::Password, username::Username},
+    error::EntityError,
     model::user::{self, InsertUser},
 };
 use sea_orm::{
@@ -35,7 +36,7 @@ pub struct UserCreate {
     pub display_name: String,
 }
 impl TryFrom<UserCreate> for InsertUser {
-    type Error = entity::error::validate::ValidateError;
+    type Error = EntityError;
     fn try_from(
         UserCreate { email, username, password, display_name }: UserCreate,
     ) -> Result<Self, Self::Error> {

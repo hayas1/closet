@@ -4,7 +4,7 @@ use argon2::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::error::validate::ValidateError;
+use crate::error::EntityError;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Password {
@@ -15,11 +15,11 @@ impl Password {
     pub fn is_unauthenticated(&self) -> bool {
         matches!(self, Self::Unauthenticated)
     }
-    pub fn hash(raw: &[u8]) -> Result<Self, ValidateError> {
+    pub fn hash(raw: &[u8]) -> Result<Self, EntityError> {
         let salt = SaltString::generate(&mut OsRng);
         let hashed = Argon2::default()
             .hash_password(raw, &salt)
-            .map_err(|_| ValidateError::CannotHashPassword)
+            .map_err(|_| EntityError::CannotHashPassword)
             .map(|password| password.to_string())?;
         Ok(Self::Authenticated(hashed))
     }
@@ -50,11 +50,10 @@ impl std::fmt::Display for Password {
     }
 }
 impl std::str::FromStr for Password {
-    // FIXME error handling
-    type Err = ValidateError;
+    type Err = EntityError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self::Authenticated(
-            PasswordHash::new(s).map_err(|_| ValidateError::CannotHashPassword)?.to_string(),
+            PasswordHash::new(s).map_err(|_| EntityError::CannotHashPassword)?.to_string(),
         ))
     }
 }

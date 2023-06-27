@@ -1,4 +1,5 @@
 use axum::{response::IntoResponse, BoxError, Json};
+use entity::error::EntityError;
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -18,10 +19,7 @@ pub enum ApiError {
     DatabaseError(StatusCode, #[source] sea_orm::DbErr),
 
     #[error("{1}")]
-    EntityError(
-        #[serde_as(as = "DisplayFromStr")] StatusCode,
-        #[source] entity::error::validate::ValidateError,
-    ),
+    EntityError(#[serde_as(as = "DisplayFromStr")] StatusCode, #[source] EntityError),
 
     #[error("request timeout {:?}", .0)]
     TimeoutError(std::time::Duration),
@@ -90,13 +88,13 @@ impl From<(StatusCode, sea_orm::DbErr)> for ApiError {
         Self::DatabaseError(status, error)
     }
 }
-impl From<entity::error::validate::ValidateError> for ApiError {
-    fn from(error: entity::error::validate::ValidateError) -> Self {
+impl From<EntityError> for ApiError {
+    fn from(error: EntityError) -> Self {
         Self::EntityError(StatusCode::BAD_REQUEST, error)
     }
 }
-impl From<(StatusCode, entity::error::validate::ValidateError)> for ApiError {
-    fn from((status, error): (StatusCode, entity::error::validate::ValidateError)) -> Self {
+impl From<(StatusCode, EntityError)> for ApiError {
+    fn from((status, error): (StatusCode, EntityError)) -> Self {
         Self::EntityError(status, error)
     }
 }
