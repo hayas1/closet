@@ -78,7 +78,9 @@ pub async fn login(
         Err(ApiError::InactiveUserError)?
     }
 
-    let login = AuthUser::authenticate(user, &state.db, &state.encoding_key);
+    let (encoding_key, expired) =
+        (state.configuration.encoding_key(), state.configuration.jwt_expired());
+    let login = AuthUser::authenticate(user, &state.db, &encoding_key, &expired);
     Ok(ApiResponse::new(login.await?))
 }
 

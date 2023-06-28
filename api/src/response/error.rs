@@ -1,11 +1,12 @@
 use axum::{response::IntoResponse, BoxError, Json};
+use chrono::Duration;
 use entity::error::EntityError;
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_with::{serde_as, DisplayFromStr};
 
-use crate::Configuration;
+use crate::configuration::Config;
 
 #[serde_as]
 #[derive(Debug, thiserror::Error, Serialize, Deserialize)]
@@ -22,7 +23,8 @@ pub enum ApiError {
     EntityError(#[serde_as(as = "DisplayFromStr")] StatusCode, #[source] EntityError),
 
     #[error("request timeout {:?}", .0)]
-    TimeoutError(std::time::Duration),
+    #[serde(with = "self::serde_duration")]
+    TimeoutError(Duration),
 
     #[error("Not Found")]
     UnmatchedPathError,
@@ -51,7 +53,8 @@ impl ApiError {
     }
     pub async fn handle_timeout(error: BoxError) -> impl IntoResponse {
         if error.is::<tower::timeout::error::Elapsed>() {
-            ApiError::TimeoutError(*Configuration::out_time())
+            // TODO state
+            ApiError::TimeoutError(Config::timeout(&Default::default()).clone())
         } else {
             let err = anyhow::anyhow!("Unhandled internal error: {}", error);
             err.into()
@@ -151,5 +154,26 @@ mod serde_database {
             StatusCode::from_u16(status).expect("invalid status code"),
             sea_orm::DbErr::Custom(database_msg),
         ))
+    }
+}
+
+// TODO use #[serde_as(as = "serde_with::DurationSeconds<i64>")], but do not #[derive(Clone)]
+mod serde_duration {
+    use chrono::Duration;
+    use serde::{Deserialize, Serialize};
+
+    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        (duration.to_std().unwrap()).serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let duration = <std::time::Duration>::deserialize(deserializer)?;
+        Ok(Duration::from_std(duration).unwrap())
     }
 }

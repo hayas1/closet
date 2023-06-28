@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use axum::{extract::State, middleware::Next, response::Response};
-use chrono::Utc;
+use chrono::{Duration, Utc};
 use entity::{
     class::id::Id,
     model::user::{self, ActiveModel},
@@ -14,14 +14,15 @@ use sea_orm::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{response::error::ApiError, AppState, Configuration};
+use crate::{response::error::ApiError, AppState};
 
 pub async fn verification<B>(
     State(state): State<AppState>,
     mut req: Request<B>,
     next: Next<B>,
 ) -> Response {
-    let user = AuthUser::verificate(req.headers(), &state.db, &state.decoding_key).await;
+    let user =
+        AuthUser::verificate(req.headers(), &state.db, &state.configuration.decoding_key()).await;
     req.extensions_mut().insert(user);
     next.run(req).await
 }
@@ -51,13 +52,10 @@ impl AuthUser {
         user: user::Model,
         db: &DatabaseConnection,
         key: &EncodingKey,
+        exp: &Duration,
     ) -> Result<Self, ApiError> {
         let now = Utc::now();
-        let (sub, iat, exp) = (
-            user.id.to_string(),
-            now.timestamp(),
-            (now + Configuration::jwt_expired().clone()).timestamp(),
-        );
+        let (sub, iat, exp) = (user.id.to_string(), now.timestamp(), (now + *exp).timestamp());
         let claims = TokenClaims { sub, iat, exp };
         let token = jsonwebtoken::encode(&Header::default(), &claims, key)
             .map_err(|e| anyhow::anyhow!(e))?;
