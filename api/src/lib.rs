@@ -1,3 +1,4 @@
+pub mod configuration;
 pub mod dev_debug;
 pub mod handler;
 pub mod middleware;
@@ -42,6 +43,7 @@ pub async fn with_auth(router: axum::Router<AppState>) -> Result<axum::Router, s
 }
 
 pub enum Configuration {}
+
 impl Configuration {
     pub const HOST: (&str, &str) = ("HOST", "0.0.0.0");
     pub const PORT: (&str, &str) = ("PORT", "3000");
