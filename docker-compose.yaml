@@ -32,7 +32,7 @@ services:
     image: rust:latest
     depends_on:
       - db
-    command: [ "cargo", "run", "--bin", "migration", "--", "up" ]
+    command: [ "cargo", "run", "--bin", "migration", "--", "fresh" ]
     environment:
       DATABASE_URL: mysql://closet:closet@db:3306/db
       CARGO_TARGET_DIR: /mnt/target
