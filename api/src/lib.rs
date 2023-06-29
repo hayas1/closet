@@ -27,6 +27,10 @@ pub async fn with_auth(
     configuration: Configuration,
 ) -> Result<axum::Router, sea_orm::DbErr> {
     let db = sea_orm::Database::connect(configuration.database_url()).await?;
+    if configuration.migrate() {
+        use migration::{Migrator, MigratorTrait};
+        Migrator::up(&db, None).await?;
+    }
     let state = AppState { db, configuration };
     let timeout = state.clone().configuration.timeout().to_std().unwrap(); // TODO error handling
     Ok(router
@@ -40,6 +44,19 @@ pub async fn with_auth(
                 .timeout(timeout),
         )
         .layer(axum::middleware::from_fn(middleware::logging::request_log)))
+}
+
+#[cfg(all(test, feature = "sqlite"))]
+pub async fn standalone() -> Result<axum::Router, sea_orm::DbErr> {
+    use rand::distributions::{Alphanumeric, DistString};
+
+    let configuration = configuration::Configuration::new(configuration::Config {
+        database_url: Some("sqlite::memory:".into()),
+        secret_key: Some(Alphanumeric.sample_string(&mut rand::thread_rng(), 1024)),
+        migrate: Some(true),
+        ..Default::default()
+    });
+    with_auth(router(configuration.base_url()), configuration).await
 }
 
 #[cfg(test)]
@@ -70,5 +87,23 @@ mod tests {
         assert_eq!(&bytes[..], br#"{"result":"ok"}"#);
         let health: ApiResponse<Either> = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(health, ApiResponse::new(Either::Ok));
+    }
+
+    #[tokio::test]
+    #[cfg(feature = "sqlite")]
+    async fn test_rich_health_call() {
+        use crate::handler::health::RichHealth;
+
+        let (uri, body) = ("/health/rich", Body::empty());
+        let mut api = standalone().await.unwrap().into_make_service();
+        let request = Request::builder().uri(uri).body(body).unwrap();
+        let mut router = api.call(&request).await.unwrap();
+        let response = router.call(request).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = to_bytes(response.into_body()).await.unwrap();
+        assert_eq!(&bytes[..], br#"{"result":{"status":"ok"}}"#);
+        let health: ApiResponse<RichHealth> = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(health, ApiResponse::new(RichHealth { status: "ok".into() }));
     }
 }

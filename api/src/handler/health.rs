@@ -54,15 +54,4 @@ mod tests {
         let health: ApiResponse<Either> = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(health, ApiResponse::new(Either::Ok));
     }
-
-    // FIXME 2023/06/24 when DatabaseConnection::Disconnected, query of sea_orm 0.11.3 will panic, not return Err
-    // #[tokio::test]
-    // async fn test_rich_health_without_db() {
-    //     let health = rich_health(State(AppState {
-    //         db: sea_orm::DatabaseConnection::Disconnected,
-    //     }))
-    //     .await;
-    //     let err = health.unwrap_err();
-    //     assert!(matches!(err, ApiError::DatabaseError(_, _)));
-    // }
 }

@@ -10,18 +10,19 @@ use serde::{Deserialize, Serialize};
 pub type Configuration = Arc<Config>;
 #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Config {
-    host: Option<String>,
-    port: Option<String>,
-    base_url: Option<String>,
-    timeout: Option<String>,
-    secret_key: Option<String>,
-    jwt_expired: Option<String>,
-    database_url: Option<String>,
-    mysql_host: Option<String>,
-    mysql_user: Option<String>,
-    mysql_password: Option<String>,
-    mysql_port: Option<String>,
-    mysql_db: Option<String>,
+    pub host: Option<String>,
+    pub port: Option<String>,
+    pub base_url: Option<String>,
+    pub timeout: Option<String>,
+    pub secret_key: Option<String>,
+    pub jwt_expired: Option<String>,
+    pub database_url: Option<String>,
+    pub mysql_host: Option<String>,
+    pub mysql_user: Option<String>,
+    pub mysql_password: Option<String>,
+    pub mysql_port: Option<String>,
+    pub mysql_db: Option<String>,
+    pub migrate: Option<bool>,
 }
 // TODO refactor
 impl Config {
@@ -37,6 +38,7 @@ impl Config {
     pub const MYSQL_PASSWORD: &str = "MYSQL_PASSWORD";
     pub const MYSQL_PORT: &str = "MYSQL_PORT";
     pub const MYSQL_DB: &str = "MYSQL_DB";
+    pub const MIGRATE: &str = "MIGRATE";
 
     pub fn environ() -> Self {
         Self::default()
@@ -55,6 +57,7 @@ impl Config {
             mysql_host: Some("localhost".into()),
             mysql_port: Some("3306".into()),
             mysql_db: Some("db".into()),
+            migrate: Some(false),
         }
     }
 
@@ -167,4 +170,26 @@ impl Config {
             database
         })
     }
+
+    pub fn migrate(&self) -> bool {
+        static _MIGRATE: OnceLock<bool> = OnceLock::new();
+        _MIGRATE
+            .get_or_init(|| {
+                let Self { migrate, .. } = Self::last_resort();
+                self.migrate.clone().unwrap_or(
+                    std::env::var(Self::MIGRATE)
+                        .map(|s| s.to_lowercase() == "true") // TODO better way
+                        .unwrap_or(migrate.expect("last_resort")),
+                )
+            })
+            .clone()
+    }
+    // pub async fn database_connection(&self) -> DatabaseConnection {
+    //     use tokio::sync::OnceCell;
+    //     static _DATABASE_CONNECTION: OnceCell<DatabaseConnection> = OnceCell::const_new();
+    //     _DATABASE_CONNECTION
+    //         .get_or_init(|| async { Database::connect(self.database_url()).await.unwrap() }) // TODO error handling
+    //         .await
+    //         .clone()
+    // }
 }
