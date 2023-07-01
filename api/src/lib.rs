@@ -47,17 +47,16 @@ pub async fn with_auth(
 }
 
 #[cfg(all(test, feature = "sqlite"))]
-pub async fn standalone() -> Result<axum::Router, sea_orm::DbErr> {
+pub fn standalone() -> configuration::Config {
     use rand::distributions::{Alphanumeric, DistString};
 
-    let configuration = configuration::Configuration::new(configuration::Config {
+    configuration::Config {
         database_url: Some("sqlite::memory:".into()),
         secret_key: Some(Alphanumeric.sample_string(&mut rand::thread_rng(), 1024)),
         migrate: Some(true),
         timeout: Some("1d".into()),
         ..Default::default()
-    });
-    with_auth(router(configuration.base_url()), configuration).await
+    }
 }
 
 #[cfg(test)]
@@ -93,10 +92,10 @@ mod tests {
     async fn test_rich_health_call() {
         use crate::handler::health::RichHealth;
 
-        let (uri, body) = ("/health/rich", Body::empty());
-        let api = standalone().await.unwrap();
+        let (uri, body) = ("/api/health/rich", Body::empty());
+        let api = with_auth(router("/api"), configuration::Configuration::new(standalone()));
         let request = Request::builder().uri(uri).body(body).unwrap();
-        let response = api.oneshot(request).await.unwrap();
+        let response = api.await.unwrap().oneshot(request).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = to_bytes(response.into_body()).await.unwrap();
@@ -116,7 +115,8 @@ mod tests {
             response::error::ApiError,
         };
 
-        let api = standalone().await.unwrap();
+        let api =
+            with_auth(router(""), configuration::Configuration::new(standalone())).await.unwrap();
 
         let create = UserCreate {
             display_name: "hogehoge".into(),
