@@ -1,7 +1,4 @@
-use std::{
-    net::SocketAddr,
-    sync::{Arc, OnceLock},
-};
+use std::{net::SocketAddr, sync::Arc};
 
 use chrono::Duration;
 use jsonwebtoken::{DecodingKey, EncodingKey};
@@ -61,55 +58,44 @@ impl Config {
         }
     }
 
-    pub fn address(&self) -> &SocketAddr {
-        static _ADDRESS: OnceLock<SocketAddr> = OnceLock::new();
-        _ADDRESS.get_or_init(|| {
-            let Self { host, port, .. } = Self::last_resort();
-            let (h, p) = (
-                std::env::var(Self::HOST).unwrap_or(host.expect("last_resort")),
-                std::env::var(Self::PORT).unwrap_or(port.expect("last_resort")),
-            );
-            SocketAddr::new(
-                self.host.clone().unwrap_or(h).parse().unwrap_or_else(|e| panic!("{}", e)),
-                self.port.clone().unwrap_or(p).parse().unwrap_or_else(|e| panic!("{}", e)),
-            )
-        })
+    pub fn address(&self) -> SocketAddr {
+        let Self { host, port, .. } = Self::last_resort();
+        let (h, p) = (
+            std::env::var(Self::HOST).unwrap_or(host.expect("last_resort")),
+            std::env::var(Self::PORT).unwrap_or(port.expect("last_resort")),
+        );
+        SocketAddr::new(
+            self.host.clone().unwrap_or(h).parse().unwrap_or_else(|e| panic!("{}", e)),
+            self.port.clone().unwrap_or(p).parse().unwrap_or_else(|e| panic!("{}", e)),
+        )
     }
 
-    pub fn base_url(&self) -> &str {
-        static _BASE_URL: OnceLock<String> = OnceLock::new();
-        _BASE_URL.get_or_init(|| {
-            let Self { base_url, .. } = Self::last_resort();
-            self.base_url
-                .clone()
-                .unwrap_or(std::env::var(Self::BASE_URL).unwrap_or(base_url.expect("last_resort")))
-        })
+    pub fn base_url(&self) -> String {
+        let Self { base_url, .. } = Self::last_resort();
+        self.base_url
+            .clone()
+            .unwrap_or(std::env::var(Self::BASE_URL).unwrap_or(base_url.expect("last_resort")))
     }
 
-    pub fn timeout(&self) -> &Duration {
-        static _TIMEOUT: OnceLock<Duration> = OnceLock::new();
-        _TIMEOUT.get_or_init(|| {
-            let Self { timeout, .. } = Self::last_resort();
-            let ts = std::env::var(Self::TIMEOUT).unwrap_or(timeout.expect("last_resort"));
-            let std_duration = duration_str::parse(&self.timeout.clone().unwrap_or(ts))
-                .unwrap_or_else(|e| panic!("{:?}", e));
-            chrono::Duration::from_std(std_duration).unwrap_or_else(|e| panic!("{}", e))
-        })
+    pub fn timeout(&self) -> Duration {
+        let Self { timeout, .. } = Self::last_resort();
+        let ts = std::env::var(Self::TIMEOUT).unwrap_or(timeout.expect("last_resort"));
+        let std_duration = duration_str::parse(&self.timeout.clone().unwrap_or(ts))
+            .unwrap_or_else(|e| panic!("{:?}", e));
+        chrono::Duration::from_std(std_duration).unwrap_or_else(|e| panic!("{}", e))
     }
 
-    pub fn secret_key(&self) -> &str {
-        static _SECRET_KEY: OnceLock<String> = OnceLock::new();
-        _SECRET_KEY.get_or_init(|| {
-            let Self { secret_key, .. } = Self::last_resort();
-            let secret = self.secret_key.clone().unwrap_or(
-                std::env::var(Self::SECRET_KEY).unwrap_or(secret_key.expect("last_resort")),
-            );
-            if secret == Self::last_resort().secret_key.expect("last_resort") {
-                panic!("must set: {}", Self::SECRET_KEY);
-            } else {
-                secret
-            }
-        })
+    pub fn secret_key(&self) -> String {
+        let Self { secret_key, .. } = Self::last_resort();
+        let secret = self
+            .secret_key
+            .clone()
+            .unwrap_or(std::env::var(Self::SECRET_KEY).unwrap_or(secret_key.expect("last_resort")));
+        if secret == Self::last_resort().secret_key.expect("last_resort") {
+            panic!("must set: {}", Self::SECRET_KEY);
+        } else {
+            secret
+        }
     }
     pub fn encoding_key(&self) -> EncodingKey {
         EncodingKey::from_secret(self.secret_key().as_ref())
@@ -118,78 +104,53 @@ impl Config {
         DecodingKey::from_secret(self.secret_key().as_ref())
     }
 
-    pub fn jwt_expired(&self) -> &Duration {
-        static _JWT_EXPIRED: OnceLock<Duration> = OnceLock::new();
-        _JWT_EXPIRED.get_or_init(|| {
-            let Self { jwt_expired, .. } = Self::last_resort();
-            let exp = std::env::var(Self::JWT_EXPIRED).unwrap_or(jwt_expired.expect("last_resort"));
-            let std_duration = duration_str::parse(&self.jwt_expired.clone().unwrap_or(exp))
-                .unwrap_or_else(|e| panic!("{:?}", e));
-            chrono::Duration::from_std(std_duration).unwrap_or_else(|e| panic!("{}", e))
-        })
+    pub fn jwt_expired(&self) -> Duration {
+        let Self { jwt_expired, .. } = Self::last_resort();
+        let exp = std::env::var(Self::JWT_EXPIRED).unwrap_or(jwt_expired.expect("last_resort"));
+        let std_duration = duration_str::parse(&self.jwt_expired.clone().unwrap_or(exp))
+            .unwrap_or_else(|e| panic!("{:?}", e));
+        chrono::Duration::from_std(std_duration).unwrap_or_else(|e| panic!("{}", e))
     }
 
-    pub fn database_url(&self) -> &str {
-        static _DATABASE_URL: OnceLock<String> = OnceLock::new();
-        _DATABASE_URL.get_or_init(|| {
-            let Self {
-                database_url,
-                mysql_user,
-                mysql_password,
-                mysql_host,
-                mysql_port,
-                mysql_db,
-                ..
-            } = Self::last_resort();
-            let db = match std::env::var(Self::DATABASE_URL) {
-                Ok(url) => url,
-                Err(_) => format!(
-                    "mysql://{}:{}@{}:{}/{}",
-                    self.mysql_user.clone().unwrap_or(
-                        std::env::var(Self::MYSQL_USER).unwrap_or(mysql_user.expect("last_resort"))
-                    ),
-                    self.mysql_password.clone().unwrap_or(
-                        std::env::var(Self::MYSQL_PASSWORD)
-                            .unwrap_or(mysql_password.expect("last_resort"))
-                    ),
-                    self.mysql_host.clone().unwrap_or(
-                        std::env::var(Self::MYSQL_HOST).unwrap_or(mysql_host.expect("last_resort"))
-                    ),
-                    self.mysql_port.clone().unwrap_or(
-                        std::env::var(Self::MYSQL_PORT).unwrap_or(mysql_port.expect("last_resort"))
-                    ),
-                    self.mysql_db.clone().unwrap_or(
-                        std::env::var(Self::MYSQL_DB).unwrap_or(mysql_db.expect("last_resort"))
-                    ),
+    pub fn database_url(&self) -> String {
+        let Self {
+            database_url, mysql_user, mysql_password, mysql_host, mysql_port, mysql_db, ..
+        } = Self::last_resort();
+        let db = match std::env::var(Self::DATABASE_URL) {
+            Ok(url) => url,
+            Err(_) => format!(
+                "mysql://{}:{}@{}:{}/{}",
+                self.mysql_user.clone().unwrap_or(
+                    std::env::var(Self::MYSQL_USER).unwrap_or(mysql_user.expect("last_resort"))
                 ),
-            };
-            let database = self.database_url.clone().unwrap_or(db);
-            if database == database_url.expect("last_resort") {
-                tracing::warn!("use last_resort {}: {}", Self::DATABASE_URL, database);
-            }
-            database
-        })
+                self.mysql_password.clone().unwrap_or(
+                    std::env::var(Self::MYSQL_PASSWORD)
+                        .unwrap_or(mysql_password.expect("last_resort"))
+                ),
+                self.mysql_host.clone().unwrap_or(
+                    std::env::var(Self::MYSQL_HOST).unwrap_or(mysql_host.expect("last_resort"))
+                ),
+                self.mysql_port.clone().unwrap_or(
+                    std::env::var(Self::MYSQL_PORT).unwrap_or(mysql_port.expect("last_resort"))
+                ),
+                self.mysql_db.clone().unwrap_or(
+                    std::env::var(Self::MYSQL_DB).unwrap_or(mysql_db.expect("last_resort"))
+                ),
+            ),
+        };
+        let database = self.database_url.clone().unwrap_or(db);
+        if database == database_url.expect("last_resort") {
+            tracing::warn!("use last_resort {}: {}", Self::DATABASE_URL, database);
+        }
+        database
     }
 
     pub fn migrate(&self) -> bool {
-        static _MIGRATE: OnceLock<bool> = OnceLock::new();
-        _MIGRATE
-            .get_or_init(|| {
-                let Self { migrate, .. } = Self::last_resort();
-                self.migrate.clone().unwrap_or(
-                    std::env::var(Self::MIGRATE)
-                        .map(|s| s.to_lowercase() == "true") // TODO better way
-                        .unwrap_or(migrate.expect("last_resort")),
-                )
-            })
-            .clone()
+        let Self { migrate, .. } = Self::last_resort();
+        self.migrate.clone().unwrap_or(
+            std::env::var(Self::MIGRATE)
+                .map(|s| s.to_lowercase() == "true") // TODO better way
+                .unwrap_or(migrate.expect("last_resort")),
+        )
     }
-    // pub async fn database_connection(&self) -> DatabaseConnection {
-    //     use tokio::sync::OnceCell;
-    //     static _DATABASE_CONNECTION: OnceCell<DatabaseConnection> = OnceCell::const_new();
-    //     _DATABASE_CONNECTION
-    //         .get_or_init(|| async { Database::connect(self.database_url()).await.unwrap() }) // TODO error handling
-    //         .await
-    //         .clone()
-    // }
 }
