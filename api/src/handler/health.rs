@@ -1,5 +1,5 @@
 use axum::{extract::State, Router};
-use entity::model::health;
+use entity::{class::status::Status, model::health};
 use hyper::StatusCode;
 use sea_orm::{EntityTrait, FromJsonQueryResult, FromQueryResult};
 use serde::{Deserialize, Serialize};
@@ -13,7 +13,7 @@ use crate::{
     Debug, Clone, Eq, PartialEq, FromQueryResult, FromJsonQueryResult, Serialize, Deserialize,
 )]
 pub struct RichHealth {
-    pub status: String,
+    pub status: Status,
 }
 pub fn health_router() -> Router<AppState> {
     axum::Router::new()

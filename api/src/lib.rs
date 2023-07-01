@@ -93,6 +93,7 @@ mod tests {
     #[cfg(feature = "sqlite")]
     async fn test_rich_health_call() {
         use crate::handler::health::RichHealth;
+        use entity::class::status::Status;
 
         let (uri, body) = ("/health/rich", Body::empty());
         let mut api = standalone().await.unwrap().into_make_service();
@@ -104,6 +105,6 @@ mod tests {
         let bytes = to_bytes(response.into_body()).await.unwrap();
         assert_eq!(&bytes[..], br#"{"result":{"status":"ok"}}"#);
         let health: ApiResponse<RichHealth> = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(health, ApiResponse::new(RichHealth { status: "ok".into() }));
+        assert_eq!(health, ApiResponse::new(RichHealth { status: Status::Ok }));
     }
 }

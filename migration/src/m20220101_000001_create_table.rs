@@ -1,4 +1,7 @@
-use entity::model::{health, user};
+use entity::{
+    class::status::Status,
+    model::{health, user},
+};
 use sea_orm_migration::{
     prelude::*,
     sea_orm::{ActiveValue, EntityTrait, QueryTrait, Schema},
@@ -15,7 +18,7 @@ impl MigrationTrait for Migration {
         manager.create_table(schema.create_table_from_entity(health::Entity)).await?;
 
         let insert_ok =
-            health::Entity::insert(health::ActiveModel { status: ActiveValue::Set("ok".into()) });
+            health::Entity::insert(health::ActiveModel { status: ActiveValue::Set(Status::Ok) });
         manager.exec_stmt(insert_ok.into_query()).await
     }
 
