@@ -11,7 +11,7 @@ pub struct Model {
     pub username: Username,
     #[sea_orm(unique)]
     pub email: Email,
-    #[serde(skip_serializing_if = "Password::is_unauthenticated")]
+    #[serde(skip_serializing_if = "Password::is_unauthenticated", default)]
     pub password: Password,
 
     pub display_name: String,
