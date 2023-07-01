@@ -5,7 +5,7 @@ use sea_orm::{EntityTrait, FromJsonQueryResult, FromQueryResult};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    response::{message::Either, result::ApiResponse, ApiResult},
+    response::{result::ApiResponse, ApiResult},
     AppState,
 };
 
@@ -21,8 +21,8 @@ pub fn health_router() -> Router<AppState> {
         .route("/rich", axum::routing::get(rich_health))
 }
 
-pub async fn health() -> ApiResult<Either> {
-    Ok(ApiResponse::new(Either::Ok))
+pub async fn health() -> ApiResult<Status> {
+    Ok(ApiResponse::new(Status::Ok))
 }
 pub async fn rich_health(State(state): State<AppState>) -> ApiResult<RichHealth> {
     let health =
@@ -42,7 +42,7 @@ mod tests {
     #[tokio::test]
     async fn test_health() {
         let health = health().await.unwrap();
-        assert_eq!(health.result(), &Either::Ok);
+        assert_eq!(health.result(), &Status::Ok);
     }
 
     #[tokio::test]
@@ -51,7 +51,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         let bytes = to_bytes(response.into_body()).await.unwrap();
-        let health: ApiResponse<Either> = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(health, ApiResponse::new(Either::Ok));
+        let health: ApiResponse<Status> = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(health, ApiResponse::new(Status::Ok));
     }
 }

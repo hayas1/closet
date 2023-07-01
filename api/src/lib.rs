@@ -61,11 +61,12 @@ pub async fn standalone() -> Result<axum::Router, sea_orm::DbErr> {
 
 #[cfg(test)]
 mod tests {
+    use entity::class::status::Status;
     use hyper::{body::to_bytes, Body, Request, StatusCode};
     use sea_orm::DatabaseConnection;
     use tower::Service;
 
-    use crate::response::{message::Either, result::ApiResponse};
+    use crate::response::result::ApiResponse;
 
     use super::*;
 
@@ -85,15 +86,14 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = to_bytes(response.into_body()).await.unwrap();
         assert_eq!(&bytes[..], br#"{"result":"ok"}"#);
-        let health: ApiResponse<Either> = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(health, ApiResponse::new(Either::Ok));
+        let health: ApiResponse<Status> = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(health, ApiResponse::new(Status::Ok));
     }
 
     #[tokio::test]
     #[cfg(feature = "sqlite")]
     async fn test_rich_health_call() {
         use crate::handler::health::RichHealth;
-        use entity::class::status::Status;
 
         let (uri, body) = ("/health/rich", Body::empty());
         let mut api = standalone().await.unwrap().into_make_service();
