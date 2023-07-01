@@ -17,8 +17,8 @@ impl std::fmt::Display for Status {
 impl std::str::FromStr for Status {
     type Err = EntityError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        serde_json::from_value(serde_json::json!(s))
-            .map_err(|_| ValidateError::UnrecognizedStatus)?
+        Ok(serde_json::from_value(serde_json::json!(s))
+            .map_err(|_| ValidateError::UnrecognizedStatus)?)
     }
 }
 
@@ -35,8 +35,19 @@ mod tests {
         let ser = serde_json::json!(ok);
         assert_eq!(ser.as_str().unwrap(), "ok");
 
-        let ng = serde_json::json!("ng");
-        let de = serde_json::from_value::<Status>(ng);
-        assert_eq!(de.unwrap(), Status::Ng);
+        let ng = "ng";
+        let de = serde_json::json!(ng);
+        assert_eq!(serde_json::from_value::<Status>(de).unwrap(), Status::Ng);
+    }
+
+    #[test]
+    fn test_str() {
+        let ok = Status::Ok;
+
+        let str = ok.to_string();
+        assert_eq!(str, "ok");
+
+        let from_str = <Status as std::str::FromStr>::from_str(&str).unwrap();
+        assert_eq!(from_str, Status::Ok);
     }
 }
