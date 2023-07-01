@@ -37,4 +37,8 @@ pub enum ValidateError {
     CannotValidateUsername { invalid_username: String },
     #[error("password contains unavailable character")]
     ContainUnavailableCharacterPassword,
+    #[error("unrecognized status")]
+    UnrecognizedStatus,
+    #[error("cannot convert to string")]
+    CannotConvertToString,
 }

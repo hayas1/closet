@@ -1,6 +1,7 @@
 pub mod email;
 pub mod id;
 pub mod password;
+pub mod status;
 pub mod username;
 
 macro_rules! impl_convert_string_value {
