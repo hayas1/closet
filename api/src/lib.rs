@@ -6,9 +6,6 @@ pub mod handler;
 pub mod middleware;
 pub mod response;
 
-pub fn router(base_url: &str) -> axum::Router<AppState> {
-    axum::Router::new().nest(base_url, api_router())
-}
 pub fn api_router() -> axum::Router<AppState> {
     axum::Router::new()
         .route("/", axum::routing::get(handler::health::health))
@@ -33,7 +30,9 @@ pub async fn with_auth(
     }
     let state = AppState { db, configuration };
     let timeout = state.clone().configuration.timeout().to_std().unwrap(); // TODO error handling
-    Ok(router
+
+    Ok(axum::Router::new()
+        .nest(&state.configuration.base_url(), router)
         .with_state(state.clone())
         .layer(axum::middleware::from_fn_with_state(state, middleware::authorization::verification))
         .layer(
@@ -93,7 +92,13 @@ mod tests {
         use crate::handler::health::RichHealth;
 
         let (uri, body) = ("/api/health/rich", Body::empty());
-        let api = with_auth(router("/api"), configuration::Configuration::new(standalone()));
+        let api = with_auth(
+            api_router(),
+            configuration::Configuration::new(configuration::Config {
+                base_url: Some("/api".into()),
+                ..standalone()
+            }),
+        );
         let request = Request::builder().uri(uri).body(body).unwrap();
         let response = api.await.unwrap().oneshot(request).await.unwrap();
 
@@ -116,7 +121,7 @@ mod tests {
         };
 
         let api =
-            with_auth(router(""), configuration::Configuration::new(standalone())).await.unwrap();
+            with_auth(api_router(), configuration::Configuration::new(standalone())).await.unwrap();
 
         let create = UserCreate {
             display_name: "hogehoge".into(),

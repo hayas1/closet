@@ -1,4 +1,4 @@
-use api::{configuration::Configuration, router, with_auth};
+use api::{api_router, configuration::Configuration, with_auth};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -6,7 +6,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::subscriber::set_global_default(subscriber)?;
 
     let configuration = Configuration::new(Default::default());
-    let (router, bind) = (router(configuration.base_url()), configuration.address());
+    let (router, bind) = (api_router(), configuration.address());
     let app = axum::Server::bind(&bind)
         .serve(with_auth(router, configuration.clone()).await?.into_make_service())
         .with_graceful_shutdown(async {
