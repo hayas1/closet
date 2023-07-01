@@ -55,7 +55,8 @@ impl AuthUser {
         exp: &Duration,
     ) -> Result<Self, ApiError> {
         let now = Utc::now();
-        let (sub, iat, exp) = (user.id.to_string(), now.timestamp(), (now + *exp).timestamp());
+        let (sub, iat, exp) =
+            (user.id.to_string(), now.timestamp_nanos(), (now + *exp).timestamp_nanos());
         let claims = TokenClaims { sub, iat, exp };
         let token = jsonwebtoken::encode(&Header::default(), &claims, key)
             .map_err(|e| anyhow::anyhow!(e))?;
@@ -86,7 +87,7 @@ impl AuthUser {
             .ok()?;
         let user = found.filter(|u| {
             // token issued before last_logout is denied
-            u.last_logout.unwrap_or_default().timestamp() <= iat
+            u.last_logout.unwrap_or_default().timestamp_nanos() <= iat
         })?;
 
         Some(Self::new(Some(token.into()), user))
