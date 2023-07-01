@@ -64,7 +64,7 @@ mod tests {
     use entity::class::status::Status;
     use hyper::{body::to_bytes, Body, Request, StatusCode};
     use sea_orm::DatabaseConnection;
-    use tower::Service;
+    use tower::ServiceExt;
 
     use crate::response::result::ApiResponse;
 
@@ -73,15 +73,12 @@ mod tests {
     #[tokio::test]
     async fn test_health_call() {
         let (uri, body) = ("/health", Body::empty());
-        let mut api = api_router()
-            .with_state(AppState {
-                db: DatabaseConnection::Disconnected,
-                configuration: Configuration::new(Default::default()),
-            })
-            .into_make_service();
+        let api = api_router().with_state(AppState {
+            db: DatabaseConnection::Disconnected,
+            configuration: Configuration::new(Default::default()),
+        });
         let request = Request::builder().uri(uri).body(body).unwrap();
-        let mut router = api.call(&request).await.unwrap();
-        let response = router.call(request).await.unwrap(); // request twice ?
+        let response = api.oneshot(request).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = to_bytes(response.into_body()).await.unwrap();
@@ -96,10 +93,9 @@ mod tests {
         use crate::handler::health::RichHealth;
 
         let (uri, body) = ("/health/rich", Body::empty());
-        let mut api = standalone().await.unwrap().into_make_service();
+        let api = standalone().await.unwrap();
         let request = Request::builder().uri(uri).body(body).unwrap();
-        let mut router = api.call(&request).await.unwrap();
-        let response = router.call(request).await.unwrap();
+        let response = api.oneshot(request).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = to_bytes(response.into_body()).await.unwrap();
