@@ -8,7 +8,7 @@ use entity::{
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     middleware::authorization::AuthUser,
@@ -28,7 +28,7 @@ pub fn auth_router() -> Router<AppState> {
         .route("/deactivate", axum::routing::post(deactivate))
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct UserCreate {
     pub email: String,
     pub username: String,
@@ -56,7 +56,7 @@ pub async fn create(
     Ok(ApiResponse::new(AuthUser::new(None, created.await?)))
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct UserLogin {
     pub username: String,
     pub password: String,
