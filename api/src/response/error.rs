@@ -88,7 +88,7 @@ impl IntoResponse for ApiError {
 
 impl From<anyhow::Error> for ApiError {
     fn from(error: anyhow::Error) -> Self {
-        Self::AnyhowError { code: StatusCode::INTERNAL_SERVER_ERROR, source: error }
+        (StatusCode::INTERNAL_SERVER_ERROR, error).into()
     }
 }
 impl From<(StatusCode, anyhow::Error)> for ApiError {
@@ -98,7 +98,7 @@ impl From<(StatusCode, anyhow::Error)> for ApiError {
 }
 impl From<sea_orm::DbErr> for ApiError {
     fn from(error: sea_orm::DbErr) -> Self {
-        Self::DatabaseError { code: StatusCode::INTERNAL_SERVER_ERROR, source: error }
+        (StatusCode::INTERNAL_SERVER_ERROR, error).into()
     }
 }
 impl From<(StatusCode, sea_orm::DbErr)> for ApiError {
@@ -108,7 +108,7 @@ impl From<(StatusCode, sea_orm::DbErr)> for ApiError {
 }
 impl From<EntityError> for ApiError {
     fn from(error: EntityError) -> Self {
-        Self::EntityError { code: StatusCode::BAD_REQUEST, source: error }
+        (StatusCode::BAD_REQUEST, error).into()
     }
 }
 impl From<(StatusCode, EntityError)> for ApiError {
