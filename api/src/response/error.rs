@@ -12,12 +12,20 @@ use crate::configuration::Config;
 #[derive(Debug, thiserror::Error, Serialize, Deserialize)]
 pub enum ApiError {
     #[error("{1}")]
-    #[serde(with = "self::serde_anyhow")]
-    AnyhowError(StatusCode, #[source] anyhow::Error),
+    AnyhowError(
+        #[serde_as(as = "DisplayFromStr")] StatusCode,
+        #[source]
+        #[serde(with = "self::serde_anyhow")]
+        anyhow::Error,
+    ),
 
     #[error("{1}")] // TODO!!! should not response ???
-    #[serde(with = "self::serde_database")]
-    DatabaseError(StatusCode, #[source] sea_orm::DbErr),
+    DatabaseError(
+        #[serde_as(as = "DisplayFromStr")] StatusCode,
+        #[source]
+        #[serde(with = "self::serde_database_error")]
+        sea_orm::DbErr,
+    ),
 
     #[error("{1}")]
     EntityError(#[serde_as(as = "DisplayFromStr")] StatusCode, #[source] EntityError),
@@ -103,57 +111,41 @@ impl From<(StatusCode, EntityError)> for ApiError {
 }
 
 mod serde_anyhow {
-    use hyper::StatusCode;
     use serde::{Deserialize, Serialize};
 
-    pub fn serialize<S>(
-        status: &StatusCode,
-        anyhow_error: &anyhow::Error,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(err: &anyhow::Error, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        (status.as_u16(), anyhow_error.to_string()).serialize(serializer)
+        err.to_string().serialize(serializer)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<(StatusCode, anyhow::Error), D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<anyhow::Error, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let (status, anyhow_msg) = <(u16, String)>::deserialize(deserializer)?;
-        Ok((
-            StatusCode::from_u16(status).expect("invalid status code"), // TODO error handling
-            anyhow::Error::msg(anyhow_msg),
-        ))
+        let msg = <String>::deserialize(deserializer)?;
+        Ok(anyhow::Error::msg(msg))
     }
 }
 
-// FIXME better serde implementation
-mod serde_database {
-    use hyper::StatusCode;
+mod serde_database_error {
     use serde::{Deserialize, Serialize};
 
-    pub fn serialize<S>(
-        status: &StatusCode,
-        database_error: &sea_orm::DbErr,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(err: &sea_orm::DbErr, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        (status.as_u16(), database_error.to_string()).serialize(serializer)
+        err.to_string().serialize(serializer)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<(StatusCode, sea_orm::DbErr), D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<sea_orm::DbErr, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let (status, database_msg) = <(u16, String)>::deserialize(deserializer)?;
-        Ok((
-            StatusCode::from_u16(status).expect("invalid status code"),
-            sea_orm::DbErr::Custom(database_msg),
-        ))
+        // FIXME all deserialized DbErr will be `Custom`
+        let msg = <String>::deserialize(deserializer)?;
+        Ok(sea_orm::DbErr::Custom(msg))
     }
 }
 
