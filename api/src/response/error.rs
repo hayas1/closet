@@ -11,24 +11,31 @@ use crate::configuration::Config;
 #[serde_as]
 #[derive(Debug, thiserror::Error, Serialize, Deserialize)]
 pub enum ApiError {
-    #[error("{1}")]
-    AnyhowError(
-        #[serde_as(as = "DisplayFromStr")] StatusCode,
+    #[error("{}", source)]
+    AnyhowError {
+        #[serde_as(as = "DisplayFromStr")]
+        code: StatusCode,
         #[source]
         #[serde(with = "self::serde_anyhow")]
-        anyhow::Error,
-    ),
+        source: anyhow::Error,
+    },
 
-    #[error("{1}")] // TODO!!! should not response ???
-    DatabaseError(
-        #[serde_as(as = "DisplayFromStr")] StatusCode,
+    #[error("{}", source)] // TODO!!! should not response ???
+    DatabaseError {
+        #[serde_as(as = "DisplayFromStr")]
+        code: StatusCode,
         #[source]
         #[serde(with = "self::serde_database_error")]
-        sea_orm::DbErr,
-    ),
+        source: sea_orm::DbErr,
+    },
 
-    #[error("{1}")]
-    EntityError(#[serde_as(as = "DisplayFromStr")] StatusCode, #[source] EntityError),
+    #[error("{}", source)]
+    EntityError {
+        #[serde_as(as = "DisplayFromStr")]
+        code: StatusCode,
+        #[source]
+        source: EntityError,
+    },
 
     #[error("request timeout {:?}", .0)]
     #[serde(with = "self::serde_duration")]
@@ -49,9 +56,9 @@ pub enum ApiError {
 impl ApiError {
     pub fn status_code(&self) -> &StatusCode {
         match self {
-            Self::AnyhowError(code, _) => code,
-            Self::DatabaseError(code, _) => code,
-            Self::EntityError(code, _) => code,
+            Self::AnyhowError { code, .. } => code,
+            Self::DatabaseError { code, .. } => code,
+            Self::EntityError { code, .. } => code,
             Self::TimeoutError(_) => &StatusCode::REQUEST_TIMEOUT,
             Self::UnmatchedPathError => &StatusCode::NOT_FOUND,
             Self::LoginFailError => &StatusCode::FORBIDDEN,
@@ -81,32 +88,32 @@ impl IntoResponse for ApiError {
 
 impl From<anyhow::Error> for ApiError {
     fn from(error: anyhow::Error) -> Self {
-        Self::AnyhowError(StatusCode::INTERNAL_SERVER_ERROR, error)
+        Self::AnyhowError { code: StatusCode::INTERNAL_SERVER_ERROR, source: error }
     }
 }
 impl From<(StatusCode, anyhow::Error)> for ApiError {
     fn from((status, error): (StatusCode, anyhow::Error)) -> Self {
-        Self::AnyhowError(status, error)
+        Self::AnyhowError { code: status, source: error }
     }
 }
 impl From<sea_orm::DbErr> for ApiError {
     fn from(error: sea_orm::DbErr) -> Self {
-        Self::DatabaseError(StatusCode::INTERNAL_SERVER_ERROR, error)
+        Self::DatabaseError { code: StatusCode::INTERNAL_SERVER_ERROR, source: error }
     }
 }
 impl From<(StatusCode, sea_orm::DbErr)> for ApiError {
     fn from((status, error): (StatusCode, sea_orm::DbErr)) -> Self {
-        Self::DatabaseError(status, error)
+        Self::DatabaseError { code: status, source: error }
     }
 }
 impl From<EntityError> for ApiError {
     fn from(error: EntityError) -> Self {
-        Self::EntityError(StatusCode::BAD_REQUEST, error)
+        Self::EntityError { code: StatusCode::BAD_REQUEST, source: error }
     }
 }
 impl From<(StatusCode, EntityError)> for ApiError {
     fn from((status, error): (StatusCode, EntityError)) -> Self {
-        Self::EntityError(status, error)
+        Self::EntityError { code: status, source: error }
     }
 }
 
