@@ -20,13 +20,14 @@ pub enum ApiError {
         source: anyhow::Error,
     },
 
-    #[error("{}", source)] // TODO!!! should not response ???
-    DatabaseError {
+    #[error("cannot connect database")]
+    CannotConnectDatabase,
+    #[error("record not found")]
+    RecordNotFound,
+    #[error("unexpected database error")]
+    UnexpectedDatabaseError {
         #[serde_as(as = "DisplayFromStr")]
         code: StatusCode,
-        #[source]
-        #[serde(with = "self::serde_database_error")]
-        source: sea_orm::DbErr,
     },
 
     #[error("{}", source)]
@@ -41,15 +42,13 @@ pub enum ApiError {
     #[serde(with = "self::serde_duration")]
     TimeoutError(Duration),
 
-    #[error("Not Found")]
+    #[error("not found api endpoint")]
     UnmatchedPathError,
 
     #[error("invalid username or password")]
     LoginFailError,
-
     #[error("inactive user")]
     InactiveUserError,
-
     #[error("login required")]
     LoginRequiredError,
 }
@@ -57,7 +56,9 @@ impl ApiError {
     pub fn status_code(&self) -> &StatusCode {
         match self {
             Self::AnyhowError { code, .. } => code,
-            Self::DatabaseError { code, .. } => code,
+            Self::CannotConnectDatabase => &StatusCode::INTERNAL_SERVER_ERROR,
+            Self::RecordNotFound => &StatusCode::NOT_FOUND,
+            Self::UnexpectedDatabaseError { code, .. } => code,
             Self::EntityError { code, .. } => code,
             Self::TimeoutError(_) => &StatusCode::REQUEST_TIMEOUT,
             Self::UnmatchedPathError => &StatusCode::NOT_FOUND,
@@ -103,7 +104,11 @@ impl From<sea_orm::DbErr> for ApiError {
 }
 impl From<(StatusCode, sea_orm::DbErr)> for ApiError {
     fn from((status, error): (StatusCode, sea_orm::DbErr)) -> Self {
-        Self::DatabaseError { code: status, source: error }
+        match error {
+            sea_orm::DbErr::Conn(_) => Self::CannotConnectDatabase,
+            sea_orm::DbErr::RecordNotFound(_) => Self::RecordNotFound,
+            _ => Self::UnexpectedDatabaseError { code: status },
+        }
     }
 }
 impl From<EntityError> for ApiError {
@@ -133,26 +138,6 @@ mod serde_anyhow {
     {
         let msg = <String>::deserialize(deserializer)?;
         Ok(anyhow::Error::msg(msg))
-    }
-}
-
-mod serde_database_error {
-    use serde::{Deserialize, Serialize};
-
-    pub fn serialize<S>(err: &sea_orm::DbErr, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        err.to_string().serialize(serializer)
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<sea_orm::DbErr, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        // FIXME all deserialized DbErr will be `Custom`
-        let msg = <String>::deserialize(deserializer)?;
-        Ok(sea_orm::DbErr::Custom(msg))
     }
 }
 
