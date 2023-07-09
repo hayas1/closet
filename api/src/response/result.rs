@@ -18,16 +18,26 @@ impl<T> ApiResponse<T> {
     pub fn failure(err: ApiError) -> Self {
         Self::Failure(err)
     }
-    pub fn result(&self) -> &T {
+    pub fn result(&self) -> Result<&T, &ApiError> {
         match self {
-            Self::Success(ok) => ok,
-            Self::Failure(err) => panic!("{:?}", err),
+            Self::Success(ok) => Ok(ok),
+            Self::Failure(err) => Err(err),
         }
     }
-    pub fn unwrap_err(&self) -> &ApiError {
+}
+impl<T> Into<ApiResult<T>> for ApiResponse<T> {
+    fn into(self) -> ApiResult<T> {
         match self {
-            Self::Success(_) => panic!("unexpected success"),
-            Self::Failure(err) => err,
+            Self::Success(ok) => Ok(Self::new(ok)),
+            Self::Failure(err) => Err(err),
+        }
+    }
+}
+impl<T> Into<Result<T, ApiError>> for ApiResponse<T> {
+    fn into(self) -> Result<T, ApiError> {
+        match self {
+            Self::Success(ok) => Ok(ok),
+            Self::Failure(err) => Err(err),
         }
     }
 }

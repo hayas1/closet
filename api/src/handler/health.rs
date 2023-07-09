@@ -42,7 +42,7 @@ mod tests {
     #[tokio::test]
     async fn test_health() {
         let health = health().await.unwrap();
-        assert_eq!(health.result(), &Status::Ok);
+        assert_eq!(health.result().unwrap(), &Status::Ok);
     }
 
     #[tokio::test]
@@ -52,6 +52,6 @@ mod tests {
 
         let bytes = to_bytes(response.into_body()).await.unwrap();
         let health: ApiResponse<Status> = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(health.result(), &Status::Ok);
+        assert_eq!(health.result().unwrap(), &Status::Ok);
     }
 }

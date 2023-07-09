@@ -83,7 +83,7 @@ mod tests {
         let bytes = to_bytes(response.into_body()).await.unwrap();
         assert_eq!(&bytes[..], br#"{"success":"ok"}"#);
         let health: ApiResponse<Status> = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(health.result(), &Status::Ok);
+        assert_eq!(health.result().unwrap(), &Status::Ok);
     }
 
     #[tokio::test]
@@ -106,7 +106,7 @@ mod tests {
         let bytes = to_bytes(response.into_body()).await.unwrap();
         assert_eq!(&bytes[..], br#"{"success":{"status":"ok"}}"#);
         let health: ApiResponse<RichHealth> = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(health.result(), &RichHealth { status: Status::Ok });
+        assert_eq!(health.result().unwrap(), &RichHealth { status: Status::Ok });
     }
 
     #[tokio::test]
@@ -143,11 +143,11 @@ mod tests {
             .unwrap();
         let created_user: ApiResponse<AuthUser> =
             serde_json::from_slice(&to_bytes(created_response.into_body()).await.unwrap()).unwrap();
-        assert!(matches!(created_user.result().token, None));
-        assert_eq!(created_user.result().user.display_name, "hogehoge");
-        assert_eq!(created_user.result().user.username.to_string(), "fugafuga");
-        assert_eq!(created_user.result().user.email.to_string(), "hoge@fuga.piyo");
-        assert_eq!(created_user.result().user.password, Password::Unauthenticated);
+        assert!(matches!(created_user.result().unwrap().token, None));
+        assert_eq!(created_user.result().unwrap().user.display_name, "hogehoge");
+        assert_eq!(created_user.result().unwrap().user.username.to_string(), "fugafuga");
+        assert_eq!(created_user.result().unwrap().user.email.to_string(), "hoge@fuga.piyo");
+        assert_eq!(created_user.result().unwrap().user.password, Password::Unauthenticated);
 
         let invalid = UserLogin { username: "fugafuga".into(), password: "pw".into() };
         let forbidden_login_response = api
@@ -165,7 +165,7 @@ mod tests {
         let forbidden_login: ApiResponse<()> =
             serde_json::from_slice(&to_bytes(forbidden_login_response.into_body()).await.unwrap())
                 .unwrap();
-        assert!(matches!(forbidden_login.unwrap_err(), ApiError::LoginFailError));
+        assert!(matches!(forbidden_login.result().unwrap_err(), ApiError::LoginFailError));
 
         let login = UserLogin { username: "fugafuga".into(), password: "piyopiyo".into() };
         let login_response = api
@@ -182,25 +182,25 @@ mod tests {
             .unwrap();
         let auth_user: ApiResponse<AuthUser> =
             serde_json::from_slice(&to_bytes(login_response.into_body()).await.unwrap()).unwrap();
-        assert!(matches!(auth_user.result().token, Some(_)));
-        assert_eq!(auth_user.result().user.display_name, "hogehoge");
-        assert_eq!(auth_user.result().user.username.to_string(), "fugafuga");
-        assert_eq!(auth_user.result().user.email.to_string(), "hoge@fuga.piyo");
-        assert_eq!(auth_user.result().user.password, Password::Unauthenticated);
-        assert_ne!(created_user.result().user, auth_user.result().user);
+        assert!(matches!(auth_user.result().unwrap().token, Some(_)));
+        assert_eq!(auth_user.result().unwrap().user.display_name, "hogehoge");
+        assert_eq!(auth_user.result().unwrap().user.username.to_string(), "fugafuga");
+        assert_eq!(auth_user.result().unwrap().user.email.to_string(), "hoge@fuga.piyo");
+        assert_eq!(auth_user.result().unwrap().user.password, Password::Unauthenticated);
+        assert_ne!(created_user.result().unwrap().user, auth_user.result().unwrap().user);
         assert_eq!(
             entity::model::user::Model {
                 updated_at: Default::default(),
-                ..created_user.result().user.clone()
+                ..created_user.result().unwrap().user.clone()
             },
             entity::model::user::Model {
                 last_login: None,
                 updated_at: Default::default(),
-                ..auth_user.result().user.clone()
+                ..auth_user.result().unwrap().user.clone()
             }
         );
 
-        let access_token = auth_user.result().token.as_ref().unwrap();
+        let access_token = auth_user.result().unwrap().token.as_ref().unwrap();
         let whoami_response = api
             .clone()
             .oneshot(
@@ -214,12 +214,12 @@ mod tests {
             .unwrap();
         let whoami_user: ApiResponse<AuthUser> =
             serde_json::from_slice(&to_bytes(whoami_response.into_body()).await.unwrap()).unwrap();
-        assert!(matches!(whoami_user.result().token, Some(_)));
-        assert_eq!(whoami_user.result().user.display_name, "hogehoge");
-        assert_eq!(whoami_user.result().user.username.to_string(), "fugafuga");
-        assert_eq!(whoami_user.result().user.email.to_string(), "hoge@fuga.piyo");
-        assert_eq!(whoami_user.result().user.password, Password::Unauthenticated);
-        assert_eq!(auth_user.result(), whoami_user.result());
+        assert!(matches!(whoami_user.result().unwrap().token, Some(_)));
+        assert_eq!(whoami_user.result().unwrap().user.display_name, "hogehoge");
+        assert_eq!(whoami_user.result().unwrap().user.username.to_string(), "fugafuga");
+        assert_eq!(whoami_user.result().unwrap().user.email.to_string(), "hoge@fuga.piyo");
+        assert_eq!(whoami_user.result().unwrap().user.password, Password::Unauthenticated);
+        assert_eq!(auth_user.result().unwrap(), whoami_user.result().unwrap());
 
         let logout_response = api
             .clone()
@@ -235,21 +235,21 @@ mod tests {
             .unwrap();
         let logout_user: ApiResponse<AuthUser> =
             serde_json::from_slice(&to_bytes(logout_response.into_body()).await.unwrap()).unwrap();
-        assert!(matches!(logout_user.result().token, None));
-        assert_eq!(logout_user.result().user.display_name, "hogehoge");
-        assert_eq!(logout_user.result().user.username.to_string(), "fugafuga");
-        assert_eq!(logout_user.result().user.email.to_string(), "hoge@fuga.piyo");
-        assert_eq!(logout_user.result().user.password, Password::Unauthenticated);
-        assert_ne!(whoami_user.result(), logout_user.result());
+        assert!(matches!(logout_user.result().unwrap().token, None));
+        assert_eq!(logout_user.result().unwrap().user.display_name, "hogehoge");
+        assert_eq!(logout_user.result().unwrap().user.username.to_string(), "fugafuga");
+        assert_eq!(logout_user.result().unwrap().user.email.to_string(), "hoge@fuga.piyo");
+        assert_eq!(logout_user.result().unwrap().user.password, Password::Unauthenticated);
+        assert_ne!(whoami_user.result().unwrap(), logout_user.result().unwrap());
         assert_eq!(
             entity::model::user::Model {
                 updated_at: Default::default(),
-                ..whoami_user.result().user.clone()
+                ..whoami_user.result().unwrap().user.clone()
             },
             entity::model::user::Model {
                 last_logout: None,
                 updated_at: Default::default(),
-                ..logout_user.result().user.clone()
+                ..logout_user.result().unwrap().user.clone()
             }
         );
 
@@ -266,6 +266,6 @@ mod tests {
             .unwrap();
         let no_auth_whoami: ApiResponse<Option<AuthUser>> =
             serde_json::from_slice(&to_bytes(no_auth_response.into_body()).await.unwrap()).unwrap();
-        assert!(matches!(no_auth_whoami.result(), None));
+        assert!(matches!(no_auth_whoami.result().unwrap(), None));
     }
 }
