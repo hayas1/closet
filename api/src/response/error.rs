@@ -8,6 +8,8 @@ use serde_with::{serde_as, DisplayFromStr};
 
 use crate::configuration::Config;
 
+use super::result::ApiResponse;
+
 #[serde_as]
 #[derive(Debug, thiserror::Error, Serialize, Deserialize)]
 pub enum ApiError {
@@ -82,8 +84,8 @@ impl ApiError {
 }
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
-        let error = json!({"msg": format!("{}", self), "serde": self});
-        (self.status_code().clone(), Json(json!({ "error": error }))).into_response()
+        let (code, response) = (self.status_code().clone(), ApiResponse::<()>::failure(self));
+        (code, Json(json!(response))).into_response()
     }
 }
 

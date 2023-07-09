@@ -81,7 +81,7 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = to_bytes(response.into_body()).await.unwrap();
-        assert_eq!(&bytes[..], br#"{"result":"ok"}"#);
+        assert_eq!(&bytes[..], br#"{"success":"ok"}"#);
         let health: ApiResponse<Status> = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(health.result(), &Status::Ok);
     }
@@ -104,7 +104,7 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = to_bytes(response.into_body()).await.unwrap();
-        assert_eq!(&bytes[..], br#"{"result":{"status":"ok"}}"#);
+        assert_eq!(&bytes[..], br#"{"success":{"status":"ok"}}"#);
         let health: ApiResponse<RichHealth> = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(health.result(), &RichHealth { status: Status::Ok });
     }
@@ -162,14 +162,10 @@ mod tests {
             )
             .await
             .unwrap();
-        let forbidden_login: serde_json::Value =
+        let forbidden_login: ApiResponse<()> =
             serde_json::from_slice(&to_bytes(forbidden_login_response.into_body()).await.unwrap())
                 .unwrap();
-        assert!(matches!(
-            // TODO deserialize error
-            serde_json::from_value(forbidden_login["error"]["serde"].clone().into()).unwrap(),
-            ApiError::LoginFailError
-        ));
+        assert!(matches!(forbidden_login.unwrap_err(), ApiError::LoginFailError));
 
         let login = UserLogin { username: "fugafuga".into(), password: "piyopiyo".into() };
         let login_response = api
