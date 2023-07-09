@@ -12,6 +12,7 @@ use super::result::ApiResponse;
 
 #[serde_as]
 #[derive(Debug, thiserror::Error, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ApiError {
     #[error("{}", source)]
     AnyhowError {
