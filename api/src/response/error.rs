@@ -4,7 +4,7 @@ use entity::error::EntityError;
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::{serde_as, DisplayFromStr, DurationNanoSeconds};
 
 use crate::configuration::Config;
 
@@ -41,9 +41,11 @@ pub enum ApiError {
         source: EntityError,
     },
 
-    #[error("request timeout {:?}", .0)]
-    #[serde(with = "self::serde_duration")]
-    TimeoutError(Duration),
+    #[error("request timeout {:?}", nanos)]
+    TimeoutError {
+        #[serde_as(as = "DurationNanoSeconds<i64>")]
+        nanos: Duration,
+    },
 
     #[error("not found api endpoint")]
     UnmatchedPathError,
@@ -63,7 +65,7 @@ impl ApiError {
             Self::RecordNotFound => &StatusCode::NOT_FOUND,
             Self::UnexpectedDatabaseError { code, .. } => code,
             Self::EntityError { code, .. } => code,
-            Self::TimeoutError(_) => &StatusCode::REQUEST_TIMEOUT,
+            Self::TimeoutError { .. } => &StatusCode::REQUEST_TIMEOUT,
             Self::UnmatchedPathError => &StatusCode::NOT_FOUND,
             Self::LoginFailError => &StatusCode::FORBIDDEN,
             Self::InactiveUserError => &StatusCode::FORBIDDEN,
@@ -73,7 +75,7 @@ impl ApiError {
     pub async fn handle_timeout(error: BoxError) -> impl IntoResponse {
         if error.is::<tower::timeout::error::Elapsed>() {
             // TODO state
-            ApiError::TimeoutError(Config::timeout(&Default::default()).clone())
+            ApiError::TimeoutError { nanos: Config::timeout(&Default::default()).clone() }
         } else {
             let err = anyhow::anyhow!("Unhandled internal error: {}", error);
             err.into()
@@ -141,26 +143,5 @@ mod serde_anyhow {
     {
         let msg = <String>::deserialize(deserializer)?;
         Ok(anyhow::Error::msg(msg))
-    }
-}
-
-// TODO use #[serde_as(as = "serde_with::DurationSeconds<i64>")], but do not #[derive(Clone)]
-mod serde_duration {
-    use chrono::Duration;
-    use serde::{Deserialize, Serialize};
-
-    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        (duration.to_std().unwrap()).serialize(serializer)
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let duration = <std::time::Duration>::deserialize(deserializer)?;
-        Ok(Duration::from_std(duration).unwrap())
     }
 }
