@@ -53,7 +53,7 @@ pub async fn create(
 ) -> ApiResult<AuthUser> {
     let insert_user: InsertUser = schema.try_into()?;
     let created = insert_user.into_active_model().insert(&state.db);
-    Ok(ApiResponse::new(AuthUser::new(None, created.await?)))
+    Ok(ApiResponse::Success(AuthUser::new(None, created.await?)))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -81,11 +81,11 @@ pub async fn login(
     let (encoding_key, expired) =
         (state.configuration.encoding_key(), state.configuration.jwt_expired());
     let login = AuthUser::authenticate(user, &state.db, &encoding_key, &expired);
-    Ok(ApiResponse::new(login.await?))
+    Ok(ApiResponse::Success(login.await?))
 }
 
 pub async fn whoami(Extension(user): Extension<Option<AuthUser>>) -> ApiResult<Option<AuthUser>> {
-    Ok(ApiResponse::new(user))
+    Ok(ApiResponse::Success(user))
 }
 
 pub async fn logout(
@@ -96,7 +96,7 @@ pub async fn logout(
     let mut active = user.ok_or_else(|| ApiError::LoginRequiredError)?.into_active_model();
     active.last_logout = ActiveValue::Set(Some(Utc::now().fixed_offset()));
     let logout = active.update(&state.db);
-    Ok(ApiResponse::new(AuthUser::new(None, logout.await?)))
+    Ok(ApiResponse::Success(AuthUser::new(None, logout.await?)))
 }
 
 pub async fn deactivate(
@@ -106,5 +106,5 @@ pub async fn deactivate(
     let mut active = user.ok_or_else(|| ApiError::LoginRequiredError)?.into_active_model();
     active.is_active = ActiveValue::Set(false);
     let deactivated = active.update(&state.db);
-    Ok(ApiResponse::new(AuthUser::new(None, deactivated.await?)))
+    Ok(ApiResponse::Success(AuthUser::new(None, deactivated.await?)))
 }

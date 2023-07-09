@@ -22,14 +22,14 @@ pub fn health_router() -> Router<AppState> {
 }
 
 pub async fn health() -> ApiResult<Status> {
-    Ok(ApiResponse::new(Status::Ok))
+    Ok(ApiResponse::Success(Status::Ok))
 }
 pub async fn rich_health(State(state): State<AppState>) -> ApiResult<RichHealth> {
     let health =
         health::Entity::find().into_model::<RichHealth>().one(&state.db).await?.ok_or_else(
             || (StatusCode::INTERNAL_SERVER_ERROR, anyhow::anyhow!("no record in database")),
         )?;
-    Ok(ApiResponse::new(health))
+    Ok(ApiResponse::Success(health))
 }
 
 #[cfg(test)]

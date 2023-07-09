@@ -12,12 +12,6 @@ pub enum ApiResponse<T> {
     Failure(ApiError),
 }
 impl<T> ApiResponse<T> {
-    pub fn new(result: T) -> Self {
-        Self::Success(result)
-    }
-    pub fn failure(err: ApiError) -> Self {
-        Self::Failure(err)
-    }
     pub fn result(&self) -> Result<&T, &ApiError> {
         match self {
             Self::Success(ok) => Ok(ok),
@@ -28,7 +22,7 @@ impl<T> ApiResponse<T> {
 impl<T> Into<ApiResult<T>> for ApiResponse<T> {
     fn into(self) -> ApiResult<T> {
         match self {
-            Self::Success(ok) => Ok(Self::new(ok)),
+            Self::Success(ok) => Ok(Self::Success(ok)),
             Self::Failure(err) => Err(err),
         }
     }

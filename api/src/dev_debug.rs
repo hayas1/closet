@@ -16,5 +16,5 @@ pub async fn wait(Path(duration): Path<String>) -> ApiResult<impl Serialize> {
     let d = duration_str::parse(&duration)
         .map_err(|e| (StatusCode::BAD_REQUEST, anyhow::anyhow!(e)))?;
     tokio::time::sleep(d).await;
-    Ok(ApiResponse::new(json!({ "waited": format!("{d:?}") })))
+    Ok(ApiResponse::Success(json!({ "waited": format!("{d:?}") })))
 }

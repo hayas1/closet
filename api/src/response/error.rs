@@ -84,7 +84,7 @@ impl ApiError {
 }
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
-        let (code, response) = (self.status_code().clone(), ApiResponse::<()>::failure(self));
+        let (code, response) = (self.status_code().clone(), ApiResponse::<()>::Failure(self));
         (code, Json(json!(response))).into_response()
     }
 }
