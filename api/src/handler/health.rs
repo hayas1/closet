@@ -52,6 +52,6 @@ mod tests {
 
         let bytes = to_bytes(response.into_body()).await.unwrap();
         let health: ApiResponse<Status> = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(health, ApiResponse::new(Status::Ok));
+        assert_eq!(health.result(), &Status::Ok);
     }
 }

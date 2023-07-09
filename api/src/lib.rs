@@ -83,7 +83,7 @@ mod tests {
         let bytes = to_bytes(response.into_body()).await.unwrap();
         assert_eq!(&bytes[..], br#"{"result":"ok"}"#);
         let health: ApiResponse<Status> = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(health, ApiResponse::new(Status::Ok));
+        assert_eq!(health.result(), &Status::Ok);
     }
 
     #[tokio::test]
@@ -106,7 +106,7 @@ mod tests {
         let bytes = to_bytes(response.into_body()).await.unwrap();
         assert_eq!(&bytes[..], br#"{"result":{"status":"ok"}}"#);
         let health: ApiResponse<RichHealth> = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(health, ApiResponse::new(RichHealth { status: Status::Ok }));
+        assert_eq!(health.result(), &RichHealth { status: Status::Ok });
     }
 
     #[tokio::test]
@@ -223,7 +223,7 @@ mod tests {
         assert_eq!(whoami_user.result().user.username.to_string(), "fugafuga");
         assert_eq!(whoami_user.result().user.email.to_string(), "hoge@fuga.piyo");
         assert_eq!(whoami_user.result().user.password, Password::Unauthenticated);
-        assert_eq!(auth_user, whoami_user);
+        assert_eq!(auth_user.result(), whoami_user.result());
 
         let logout_response = api
             .clone()
@@ -244,7 +244,7 @@ mod tests {
         assert_eq!(logout_user.result().user.username.to_string(), "fugafuga");
         assert_eq!(logout_user.result().user.email.to_string(), "hoge@fuga.piyo");
         assert_eq!(logout_user.result().user.password, Password::Unauthenticated);
-        assert_ne!(whoami_user, logout_user);
+        assert_ne!(whoami_user.result(), logout_user.result());
         assert_eq!(
             entity::model::user::Model {
                 updated_at: Default::default(),

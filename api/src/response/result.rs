@@ -3,7 +3,7 @@ use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ApiResponse<T> {
     result: T,
 }
